@@ -297,7 +297,8 @@ export function useStarData(): {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/hyg_v42_filtered.csv");
+        const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+        const res = await fetch(`${base}/hyg_v42_filtered.csv`);
         if (!res.ok) throw new Error(`Failed to load star data: ${res.status}`);
         const text = await res.text();
         if (cancelled) return;
