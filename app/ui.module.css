@@ -1,0 +1,764 @@
+:global(:root) {
+  --background: #000000;
+  --foreground: #e4e4e7;
+  color-scheme: dark;
+}
+
+:global(body) {
+  margin: 0;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Layout */
+.htmlRoot {
+  height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color-scheme: dark;
+}
+
+.bodyRoot {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: #000000;
+  color: #e4e4e7;
+}
+
+.mainRoot {
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  background: #000000;
+}
+
+/* InterstellarView */
+.canvasFullBleed {
+  position: absolute;
+  inset: 0;
+}
+
+.viewRoot {
+  position: relative;
+  height: 100dvh;
+  width: 100%;
+  background: #000000;
+}
+
+.overlayCenter {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #a1a1aa;
+}
+
+.overlayError {
+  composes: overlayCenter;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  text-align: center;
+  color: #f87171;
+}
+
+.tooltipOverlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+}
+
+.starHoverTooltip {
+  pointer-events: none;
+  position: absolute;
+  white-space: nowrap;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(113, 113, 122, 0.8);
+  background: rgba(9, 9, 11, 0.95);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: #f4f4f5;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.journeyHoverTooltip {
+  pointer-events: none;
+  position: absolute;
+  min-width: 8rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(245, 158, 11, 0.7);
+  background: rgba(9, 9, 11, 0.95);
+  padding: 0.375rem 0.5rem;
+  font-size: 10px;
+  line-height: 1.25;
+  color: #f4f4f5;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.tabularNums {
+  font-variant-numeric: tabular-nums;
+}
+
+.journeyTooltipMuted {
+  composes: tabularNums;
+  color: #d4d4d8;
+}
+
+.journeyTooltipGamma {
+  composes: tabularNums;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+.starAside {
+  position: absolute;
+  top: 8rem;
+  right: 1rem;
+  z-index: 20;
+  max-height: min(70vh, calc(100dvh - 8rem));
+  width: min(22rem, calc(100vw - 2rem));
+  overflow-y: auto;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(82, 82, 91, 0.7);
+  background: rgba(9, 9, 11, 0.95);
+  padding: 1rem;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.starAsideHeader {
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.starAsideTitle {
+  font-size: 0.875rem;
+  line-height: 1.375;
+  font-weight: 600;
+  color: #f4f4f5;
+}
+
+.iconButton {
+  flex-shrink: 0;
+  border-radius: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #71717a;
+  transition: color 0.15s, background-color 0.15s;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background: #27272a;
+  color: #e4e4e7;
+}
+
+.starAsideDl {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.starAsideRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid #27272a;
+  padding-top: 0.5rem;
+}
+
+.starAsideDt {
+  color: #71717a;
+}
+
+.starAsideDd {
+  font-variant-numeric: tabular-nums;
+  color: #e4e4e7;
+}
+
+/* StarSearchBar */
+.searchRoot {
+  pointer-events: auto;
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  z-index: 30;
+  width: min(22rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.searchInput {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(82, 82, 91, 0.8);
+  background: rgba(9, 9, 11, 0.95);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #f4f4f5;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(4px);
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: #71717a;
+}
+
+.searchInput:focus {
+  border-color: #a1a1aa;
+  box-shadow: 0 0 0 1px #71717a;
+}
+
+.suggestionsList {
+  margin-top: 0.25rem;
+  max-height: min(18rem, 50vh);
+  overflow: auto;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(82, 82, 91, 0.8);
+  background: rgba(9, 9, 11, 0.98);
+  padding: 0.25rem 0;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.suggestionEmpty {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #71717a;
+}
+
+.suggestionButton {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  transition: background-color 0.15s, color 0.15s;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #e4e4e7;
+}
+
+.suggestionButtonInactive:hover {
+  background: rgba(39, 39, 42, 0.7);
+}
+
+.suggestionButtonActive {
+  background: #27272a;
+  color: #fafafa;
+}
+
+.suggestionLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.suggestionCon {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: #71717a;
+}
+
+/* MapHud */
+.toggleRow {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  text-align: left;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  transition: background-color 0.15s, color 0.15s;
+  border: none;
+  cursor: pointer;
+}
+
+.toggleRowOn {
+  composes: toggleRow;
+  background: #27272a;
+  color: #f4f4f5;
+}
+
+.toggleRowOff {
+  composes: toggleRow;
+  color: #71717a;
+}
+
+.toggleRowOff:hover {
+  background: rgba(39, 39, 42, 0.6);
+  color: #d4d4d8;
+}
+
+.toggleState {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 1rem;
+  backdrop-filter: blur(12px);
+}
+
+.modalDialog {
+  max-height: min(85dvh, 640px);
+  width: 100%;
+  max-width: 32rem;
+  overflow-y: auto;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(82, 82, 91, 0.8);
+  background: rgba(9, 9, 11, 0.95);
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: #d4d4d8;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.modalHeader {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.modalTitle {
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  color: #f4f4f5;
+}
+
+.modalSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modalSectionBorder {
+  composes: modalSection;
+  border-bottom: 1px solid #27272a;
+  padding-bottom: 1rem;
+}
+
+.modalSectionBorderTop {
+  composes: modalSection;
+  border-bottom: 1px solid #27272a;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.modalSectionLast {
+  composes: modalSection;
+  gap: 0.75rem;
+  padding-top: 1rem;
+}
+
+.modalSectionTitle {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #71717a;
+}
+
+.modalText {
+  line-height: 1.625;
+}
+
+.modalList {
+  list-style-position: inside;
+  list-style-type: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  line-height: 1.625;
+}
+
+.modalLinksList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.linkExternal {
+  color: #38bdf8;
+  text-decoration: underline;
+  text-decoration-color: rgba(56, 189, 248, 0.5);
+  text-underline-offset: 2px;
+}
+
+.linkExternal:hover {
+  color: #7dd3fc;
+}
+
+.linkNote {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: #71717a;
+}
+
+.hudPanel {
+  position: absolute;
+  top: 1rem;
+  left: 4px;
+  z-index: 20;
+  display: flex;
+  width: 200px;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(82, 82, 91, 0.7);
+  background: rgba(9, 9, 11, 0.9);
+  padding: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(4px);
+}
+
+.hudSegmentGroup {
+  display: flex;
+  gap: 2px;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  background: rgba(24, 24, 27, 0.8);
+  padding: 2px;
+}
+
+.hudSegmentBtn {
+  flex: 1;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  transition: background-color 0.15s, color 0.15s;
+  border: none;
+  cursor: pointer;
+}
+
+.hudSegmentBtnActive {
+  composes: hudSegmentBtn;
+  background: #3f3f46;
+  color: #f4f4f5;
+}
+
+.hudSegmentBtnInactive {
+  composes: hudSegmentBtn;
+  color: #a1a1aa;
+  background: transparent;
+}
+
+.hudSegmentBtnInactive:hover {
+  background: rgba(39, 39, 42, 0.8);
+  color: #e4e4e7;
+}
+
+.hudVisibilityGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-top: 1px solid #27272a;
+  padding-top: 0.5rem;
+}
+
+.hudAboutBtn {
+  margin-top: 2px;
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  background: rgba(24, 24, 27, 0.8);
+  padding: 0.375rem 0.5rem;
+  text-align: left;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: #a1a1aa;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+  cursor: pointer;
+}
+
+.hudAboutBtn:hover {
+  border-color: #52525b;
+  background: rgba(39, 39, 42, 0.8);
+  color: #e4e4e7;
+}
+
+/* RelativisticTravelPanel */
+.travelPanel {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-top: 1px solid #27272a;
+  padding-top: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.travelHeading {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #a1a1aa;
+}
+
+.travelFieldStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.travelLabel {
+  display: block;
+  color: #71717a;
+}
+
+.travelLabelInline {
+  margin-bottom: 0.25rem;
+}
+
+.modeToggleGroup {
+  display: flex;
+  gap: 2px;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(63, 63, 70, 0.8);
+  background: rgba(24, 24, 27, 0.8);
+  padding: 4px;
+}
+
+.modeBtn {
+  flex: 1;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 11px;
+  font-weight: 500;
+  transition: background-color 0.15s, color 0.15s;
+  border: none;
+  cursor: pointer;
+}
+
+.modeBtnActive {
+  composes: modeBtn;
+  background: #3f3f46;
+  color: #f4f4f5;
+}
+
+.modeBtnInactive {
+  composes: modeBtn;
+  color: #a1a1aa;
+  background: transparent;
+}
+
+.modeBtnInactive:hover {
+  background: rgba(39, 39, 42, 0.8);
+  color: #e4e4e7;
+}
+
+.sliderHeaderRow {
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #71717a;
+}
+
+.sliderHeaderRowCoast {
+  margin-bottom: 0.25rem;
+  display: flex;
+  justify-content: space-between;
+  color: #71717a;
+}
+
+.sliderValue {
+  font-variant-numeric: tabular-nums;
+  color: #a1a1aa;
+}
+
+.rangeInput {
+  width: 100%;
+  margin-bottom: 0.375rem;
+  accent-color: #f59e0b;
+}
+
+.rangeInputNoMb {
+  composes: rangeInput;
+  margin-bottom: 0;
+}
+
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.presetBtn {
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.presetBtnActive {
+  composes: presetBtn;
+  background: #3f3f46;
+  color: #f4f4f5;
+}
+
+.presetBtnInactive {
+  composes: presetBtn;
+  background: rgba(39, 39, 42, 0.6);
+  color: #a1a1aa;
+}
+
+.presetBtnInactive:hover {
+  color: #e4e4e7;
+}
+
+.numberField {
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid #3f3f46;
+  background: #18181b;
+  padding: 0.25rem 0.5rem;
+  font-variant-numeric: tabular-nums;
+  color: #e4e4e7;
+}
+
+.flexGap2 {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.travelSmallNote {
+  margin-top: 0.25rem;
+  font-size: 10px;
+  color: #71717a;
+}
+
+.exhaustValueRow {
+  margin-top: 2px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #a1a1aa;
+}
+
+.travelError {
+  border-radius: 0.375rem;
+  border: 1px solid rgba(120, 53, 15, 0.6);
+  background: rgba(69, 26, 3, 0.3);
+  padding: 0.375rem 0.5rem;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+.travelResults {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 11px;
+}
+
+.resultCard {
+  border-radius: 0.375rem;
+  width: 100%;
+  border: 1px solid #27272a;
+  background: rgba(24, 24, 27, 0.4);
+  padding: 0.5rem;
+  font-size: 14px;
+}
+
+.resultCardTitle {
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+  color: #d4d4d8;
+}
+
+.resultPrimary {
+  color: #f4f4f5;
+}
+
+.resultMuted {
+  margin-top: 0.25rem;
+  color: #71717a;
+}
+
+.resultMutedStrong {
+  font-variant-numeric: tabular-nums;
+  color: #d4d4d8;
+}
+
+.detailBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  color: #a1a1aa;
+}
+
+.detailTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: #d4d4d8;
+}
+
+.detailList {
+  list-style-position: inside;
+  list-style-type: disc;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 4px;
+}

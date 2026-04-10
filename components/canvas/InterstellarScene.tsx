@@ -1,18 +1,31 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
-import { Line, OrbitControls } from "@react-three/drei";
-import type { Line2, LineSegments2, OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { useRef, type RefObject } from "react";
+import { OrbitControls } from "@react-three/drei";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { StarsInstanced, type StarPickInfo } from "./StarsInstanced";
+import { SunToStarJourneyVisual } from "./SunToStarJourneyVisual";
 import { CameraPositionReporter } from "./CameraPositionReporter";
 import { ZDropLines } from "./ZDropLines";
 import { LyCartesianGrid } from "./LyCartesianGrid";
 import { LyRadialGrid } from "./LyRadialGrid";
 import type { StarData } from "./useStarData";
+import type { FlightMode } from "@/lib/relativisticTravel";
+import type { JourneyLineHoverPayload } from "./journeyLineHoverPayload";
 
 export type GridMode = "cartesian" | "radial";
 
 export type { StarPickInfo };
+export type { JourneyLineHoverPayload };
+
+export type JourneyPathState = {
+  index: number;
+  distanceLy: number;
+  mode: FlightMode;
+  accelerationG: number;
+  coastFraction: number;
+  showVase: boolean;
+};
 
 type Props = {
   data: StarData;
@@ -20,49 +33,15 @@ type Props = {
   showGrid: boolean;
   showZLines: boolean;
   selectedStarIndex: number | null;
+  journeyPath: JourneyPathState | null;
+  journeyLineHover: JourneyLineHoverPayload | null;
+  onJourneyLineHover: (payload: JourneyLineHoverPayload | null) => void;
+  journeyHoverTooltipRef: RefObject<HTMLDivElement | null>;
   onStarClick: (info: StarPickInfo) => void;
   cameraHudRef: RefObject<HTMLElement | null>;
   hoverTooltipRef: RefObject<HTMLDivElement | null>;
   onHoverStarIndex: (index: number | null) => void;
 };
-
-function SunToStarLine({
-  positions,
-  index,
-}: {
-  positions: Float32Array;
-  index: number;
-}) {
-  const lineRef = useRef<Line2 | LineSegments2 | null>(null);
-
-  const points = useMemo(() => {
-    const x = positions[index * 3] ?? 0;
-    const y = positions[index * 3 + 1] ?? 0;
-    const z = positions[index * 3 + 2] ?? 0;
-    return [
-      [0, 0, 0] as [number, number, number],
-      [x, y, z] as [number, number, number],
-    ];
-  }, [positions, index]);
-
-  useLayoutEffect(() => {
-    const o = lineRef.current;
-    if (o) o.raycast = () => {};
-  });
-
-  return (
-    <Line
-      ref={lineRef}
-      points={points}
-      color="#ff8c00"
-      lineWidth={2}
-      toneMapped={false}
-      depthTest
-      transparent
-      opacity={0.95}
-    />
-  );
-}
 
 export function InterstellarScene({
   data,
@@ -70,12 +49,23 @@ export function InterstellarScene({
   showGrid,
   showZLines,
   selectedStarIndex,
+  journeyPath,
+  journeyLineHover,
+  onJourneyLineHover,
+  journeyHoverTooltipRef,
   onStarClick,
   cameraHudRef,
   hoverTooltipRef,
   onHoverStarIndex,
 }: Props) {
   const orbitRef = useRef<OrbitControlsImpl>(null);
+
+  const showJourney =
+    journeyPath !== null &&
+    selectedStarIndex !== null &&
+    selectedStarIndex === journeyPath.index &&
+    selectedStarIndex >= 0 &&
+    selectedStarIndex < data.count;
 
   return (
     <>
@@ -86,6 +76,8 @@ export function InterstellarScene({
         dampingFactor={0.06}
         minDistance={0.5}
         maxDistance={1e7}
+        autoRotate
+        autoRotateSpeed={0.15}
       />
 
       {gridMode === "cartesian" ? (
@@ -102,12 +94,6 @@ export function InterstellarScene({
         />
       )}
 
-      {selectedStarIndex !== null &&
-        selectedStarIndex >= 0 &&
-        selectedStarIndex < data.count && (
-          <SunToStarLine positions={data.positions} index={selectedStarIndex} />
-        )}
-
       <StarsInstanced
         positions={data.positions}
         mag={data.mag}
@@ -120,6 +106,21 @@ export function InterstellarScene({
         hoverTooltipRef={hoverTooltipRef}
         onHoverStarIndex={onHoverStarIndex}
       />
+
+      {showJourney && journeyPath && (
+        <SunToStarJourneyVisual
+          positions={data.positions}
+          index={journeyPath.index}
+          distanceLy={journeyPath.distanceLy}
+          mode={journeyPath.mode}
+          accelerationG={journeyPath.accelerationG}
+          coastFraction={journeyPath.coastFraction}
+          showVase={journeyPath.showVase}
+          journeyLineHover={journeyLineHover}
+          onJourneyLineHover={onJourneyLineHover}
+          journeyHoverTooltipRef={journeyHoverTooltipRef}
+        />
+      )}
       <ZDropLines
         positions={data.positions}
         count={data.count}

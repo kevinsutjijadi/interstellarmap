@@ -1,6 +1,16 @@
 "use client";
 
 import type { GridMode } from "@/components/canvas/InterstellarScene";
+import { useCallback, useEffect, useId, useState } from "react";
+import styles from "@/app/ui.module.css";
+
+const WELCOME_DISMISSED_KEY = "interstellarmap-welcome-dismissed";
+
+const LINKS = {
+  youtube: "https://youtu.be/8FT-oz9aZU4?si=o6FwIbx7qgwSZNib",
+  relativisticCalc: "https://www.overvieweffekt.com/tools/relativistic-travel-calculator",
+  hyg: "https://www.astronexus.com/projects/hyg",
+} as const;
 
 type Props = {
   gridMode: GridMode;
@@ -24,15 +34,123 @@ function ToggleRow({
     <button
       type="button"
       onClick={onToggle}
-      className={`flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs transition-colors ${
-        on
-          ? "bg-zinc-800 text-zinc-100"
-          : "text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"
-      }`}
+      className={on ? styles.toggleRowOn : styles.toggleRowOff}
     >
       <span>{label}</span>
-      <span className="tabular-nums opacity-70">{on ? "On" : "Off"}</span>
+      <span className={styles.toggleState}>{on ? "On" : "Off"}</span>
     </button>
+  );
+}
+
+function AboutModal({
+  open,
+  onClose,
+  titleId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  titleId: string;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className={styles.modalBackdrop}
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className={styles.modalDialog}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.modalHeader}>
+          <h2 id={titleId} className={styles.modalTitle}>
+            Interstellar Map
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.iconButton}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <section className={styles.modalSectionBorder}>
+          <h3 className={styles.modalSectionTitle}>Description</h3>
+          <p className={styles.modalText}>
+            An interactive 3D star field using the HYG catalog: positions in light-years from the Sun, optional
+            Cartesian or radial reference grids, and tools to explore distance and relativistic travel times.
+          </p>
+        </section>
+
+        <section className={styles.modalSectionBorderTop}>
+          <h3 className={styles.modalSectionTitle}>How to use</h3>
+          <ul className={styles.modalList}>
+            <li>Drag to orbit the camera; scroll or pinch to zoom.</li>
+            <li>Use the top search to find a star by name; click a star to open details and the travel panel.</li>
+            <li>Toggle grid mode and visibility from this HUD (bottom-left).</li>
+            <li>With a star selected, adjust acceleration, flight mode, and coast fraction in the side panel.</li>
+          </ul>
+        </section>
+
+        <section className={styles.modalSectionLast}>
+          <h3 className={styles.modalSectionTitle}>Attribution &amp; links</h3>
+          <p className={styles.modalText}>
+            All functions and calculations are based on The Overview Effect's relativistic travel calculator. Star positions are from the HYG catalog, though filtered to only include stars with names. I made this just after watching Project Hail Mary; Can't sleep.
+            <br/><br/>
+            Amaze Amaze Amaze.
+          </p>
+          <ul className={styles.modalLinksList}>
+            <li>
+              <a
+                href={LINKS.hyg}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.linkExternal}
+              >
+                HYG database (Astronomy Nexus)
+              </a>
+              <span className={styles.linkNote}>Star catalog source (CC BY-SA).</span>
+            </li>
+            <li>
+              <a
+                href={LINKS.relativisticCalc}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.linkExternal}
+              >
+                Relativistic rocket calculator
+              </a>
+              <span className={styles.linkNote}>Overview Effekt — related physics reference.</span>
+            </li>
+            <li>
+              <a
+                href={LINKS.youtube}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.linkExternal}
+              >
+                YouTube — Time Dilation Visualized
+              </a>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </div>
   );
 }
 
@@ -44,49 +162,83 @@ export function MapHud({
   showZLines,
   onShowZLines,
 }: Props) {
-  return (
-    <div className="absolute top-4 right-4 z-20 flex w-[200px] flex-col gap-2 rounded-lg border border-zinc-600/70 bg-zinc-950/90 p-2 shadow-lg backdrop-blur-sm">
-      <div
-        className="flex gap-0.5 rounded-md border border-zinc-700/80 bg-zinc-900/80 p-0.5"
-        role="group"
-        aria-label="Reference grid layout"
-      >
-        <button
-          type="button"
-          onClick={() => onGridMode("cartesian")}
-          className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-            gridMode === "cartesian"
-              ? "bg-zinc-700 text-zinc-100"
-              : "text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200"
-          }`}
-        >
-          Grid
-        </button>
-        <button
-          type="button"
-          onClick={() => onGridMode("radial")}
-          className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
-            gridMode === "radial"
-              ? "bg-zinc-700 text-zinc-100"
-              : "text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200"
-          }`}
-        >
-          Radial
-        </button>
-      </div>
+  const aboutTitleId = useId();
+  const [aboutOpen, setAboutOpen] = useState(false);
 
-      <div className="flex flex-col gap-1 border-t border-zinc-800 pt-2" role="group" aria-label="Visibility">
-        <ToggleRow
-          label="Reference grid (ly)"
-          on={showGrid}
-          onToggle={() => onShowGrid(!showGrid)}
-        />
-        <ToggleRow
-          label="Z drop lines"
-          on={showZLines}
-          onToggle={() => onShowZLines(!showZLines)}
-        />
+  const closeAbout = useCallback(() => {
+    setAboutOpen(false);
+    try {
+      localStorage.setItem(WELCOME_DISMISSED_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(WELCOME_DISMISSED_KEY) !== "1") {
+        setAboutOpen(true);
+      }
+    } catch {
+      setAboutOpen(true);
+    }
+  }, []);
+
+  return (
+    <>
+      <AboutModal open={aboutOpen} onClose={closeAbout} titleId={aboutTitleId} />
+
+      <div className={styles.hudPanel}>
+        <div
+          className={styles.hudSegmentGroup}
+          role="group"
+          aria-label="Reference grid layout"
+        >
+          <button
+            type="button"
+            onClick={() => onGridMode("cartesian")}
+            className={
+              gridMode === "cartesian"
+                ? styles.hudSegmentBtnActive
+                : styles.hudSegmentBtnInactive
+            }
+          >
+            Grid
+          </button>
+          <button
+            type="button"
+            onClick={() => onGridMode("radial")}
+            className={
+              gridMode === "radial"
+                ? styles.hudSegmentBtnActive
+                : styles.hudSegmentBtnInactive
+            }
+          >
+            Radial
+          </button>
+        </div>
+
+        <div className={styles.hudVisibilityGroup} role="group" aria-label="Visibility">
+          <ToggleRow
+            label="Reference grid (ly)"
+            on={showGrid}
+            onToggle={() => onShowGrid(!showGrid)}
+          />
+          <ToggleRow
+            label="Z drop lines"
+            on={showZLines}
+            onToggle={() => onShowZLines(!showZLines)}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setAboutOpen(true)}
+          className={styles.hudAboutBtn}
+        >
+          About &amp; help
+        </button>
       </div>
-    </div>
+    </>
   );
 }

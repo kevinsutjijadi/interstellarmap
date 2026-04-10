@@ -25,6 +25,27 @@ export type StarData = {
   maxAbsY: number;
 };
 
+function normalizeBfKey(s: string): string {
+  return s.replace(/\s+/g, "").toLowerCase();
+}
+
+/** Match HYG `bf` ignoring spaces and case (e.g. `"52Tau Cet"`). */
+export function findStarIndexByBf(data: StarData, bf: string): number | null {
+  const target = normalizeBfKey(bf);
+  for (let i = 0; i < data.count; i++) {
+    if (normalizeBfKey(data.bf[i] ?? "") === target) return i;
+  }
+  return null;
+}
+
+export function distanceFromSunLy(data: StarData, index: number): number {
+  const i = index * 3;
+  const x = data.positions[i] ?? 0;
+  const y = data.positions[i + 1] ?? 0;
+  const z = data.positions[i + 2] ?? 0;
+  return Math.hypot(x, y, z);
+}
+
 /** Display label: proper if non-empty, else bf */
 export function starDisplayName(proper: string, bf: string): string {
   const p = proper.trim();

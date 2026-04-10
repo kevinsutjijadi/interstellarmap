@@ -13,6 +13,7 @@ import {
 import type { StarPickInfo } from "@/components/canvas/InterstellarScene";
 import type { StarData } from "@/components/canvas/useStarData";
 import { starDisplayName } from "@/components/canvas/useStarData";
+import styles from "@/app/ui.module.css";
 
 const MAX_SUGGESTIONS = 48;
 
@@ -138,11 +139,8 @@ export function StarSearchBar({ data, onSelectStar }: Props) {
   );
 
   return (
-    <div
-      ref={rootRef}
-      className="pointer-events-auto absolute top-4 left-1/2 z-30 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2"
-    >
-      <label htmlFor={listId} className="sr-only">
+    <div ref={rootRef} className={styles.searchRoot}>
+      <label htmlFor={listId} className={styles.srOnly}>
         Search stars by name or constellation
       </label>
       <input
@@ -164,16 +162,16 @@ export function StarSearchBar({ data, onSelectStar }: Props) {
         }}
         onFocus={() => query.trim() && setOpen(true)}
         onKeyDown={onKeyDown}
-        className="w-full rounded-lg border border-zinc-600/80 bg-zinc-950/95 px-3 py-2 text-sm text-zinc-100 shadow-lg backdrop-blur-sm outline-none placeholder:text-zinc-500 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-500"
+        className={styles.searchInput}
       />
       {showList && (
         <ul
           id={`${listId}-listbox`}
           role="listbox"
-          className="mt-1 max-h-[min(18rem,50vh)] overflow-auto rounded-lg border border-zinc-600/80 bg-zinc-950/98 py-1 shadow-xl backdrop-blur-sm"
+          className={styles.suggestionsList}
         >
           {hits.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-zinc-500">No matching stars</li>
+            <li className={styles.suggestionEmpty}>No matching stars</li>
           ) : (
             hits.map((h, i) => (
               <li key={h.index} role="presentation">
@@ -181,16 +179,18 @@ export function StarSearchBar({ data, onSelectStar }: Props) {
                   type="button"
                   role="option"
                   aria-selected={i === activeIdx}
-                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs transition-colors ${
-                    i === activeIdx ? "bg-zinc-800 text-zinc-50" : "text-zinc-200 hover:bg-zinc-800/70"
-                  }`}
+                  className={
+                    i === activeIdx
+                      ? `${styles.suggestionButton} ${styles.suggestionButtonActive}`
+                      : `${styles.suggestionButton} ${styles.suggestionButtonInactive}`
+                  }
                   onMouseEnter={() => setActiveIdx(i)}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => pick(h.index)}
                 >
-                  <span className="min-w-0 truncate font-medium">{h.label}</span>
+                  <span className={styles.suggestionLabel}>{h.label}</span>
                   {h.con ? (
-                    <span className="shrink-0 tabular-nums text-zinc-500">{h.con}</span>
+                    <span className={styles.suggestionCon}>{h.con}</span>
                   ) : null}
                 </button>
               </li>

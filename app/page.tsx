@@ -1,8 +1,9 @@
 import { InterstellarViewDynamic } from "@/components/canvas/InterstellarViewDynamic";
+import styles from "./ui.module.css";
 
 export default function Home() {
   return (
-    <main className="h-dvh w-full overflow-hidden bg-black">
+    <main className={styles.mainRoot}>
       <InterstellarViewDynamic />
     </main>
   );

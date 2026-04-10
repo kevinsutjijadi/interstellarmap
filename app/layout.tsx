@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import styles from "./ui.module.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Interstellar Map",
   description: "HYG star field in Cartesian coordinates (light-years)",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
@@ -25,9 +28,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} ${styles.htmlRoot}`}
     >
-      <body className="min-h-dvh flex flex-col bg-black text-zinc-200">
+      <body className={styles.bodyRoot}>
         {children}
       </body>
     </html>
