@@ -1,4 +1,4 @@
-<img width="973" height="824" alt="image" src="https://github.com/user-attachments/assets/15b959c8-b7f5-4711-a8d9-396109fc05e6" /># Interstellar Map
+# Interstellar Map
 
 Interactive 3D map of nearby stars using the [HYG Database](https://www.astronexus.com/projects/hyg), shown in a Cartesian frame with axes in light-years. Built with [Next.js](https://nextjs.org), [React Three Fiber](https://docs.pmnd.rs/react-three-fiber), and [Three.js](https://threejs.org). All functions and calculations are based on The Overview Effect's relativistic travel calculator. Star positions are from the HYG catalog, though filtered to only include stars with names. I made this just after watching Project Hail Mary; Can't sleep.
 
