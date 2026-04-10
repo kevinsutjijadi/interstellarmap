@@ -1,31 +1,55 @@
 "use client";
 
-import { Line } from "@react-three/drei";
-import { useEffect, useMemo, type RefObject } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import {
+  distanceLyForFractionOfTotalShipTime,
   gammaBetaAtDistanceAlongRoute,
+  shipProperTimeYears,
   type FlightMode,
   type JourneyKinematicsParams,
+  type JourneyKinematicsProfile,
 } from "@/lib/relativisticTravel";
 import type { JourneyLineHoverPayload } from "./journeyLineHoverPayload";
 
 export type SunToStarJourneyProps = {
+  /** Display-space star position (ly / ship yr / blended while map animates). */
   positions: Float32Array;
+  physicalPositions: Float32Array;
   index: number;
   distanceLy: number;
   mode: FlightMode;
   accelerationG: number;
-  /** 0–1 */
   coastFraction: number;
   showVase: boolean;
+  mapByShipProperTime: boolean;
+  /** When map mode is animating, used to pick straight vs τ line and to hide vase mid-blend. */
+  mapBlendAlphaRef?: RefObject<number>;
+  mapTargetShipTime?: boolean;
+  /** When true, vase aims at the flattened map position; τ spine is projected to XZ at each ring (mesh stays 3D). */
+  flatMapXzPlane?: boolean;
   journeyLineHover: JourneyLineHoverPayload | null;
   onJourneyLineHover: (payload: JourneyLineHoverPayload | null) => void;
   journeyHoverTooltipRef: RefObject<HTMLDivElement | null>;
 };
 
 const projWorld = new THREE.Vector3();
+const LINE_SEGMENTS = 64;
+const BLEND_SETTLE_EPS = 0.02;
+const FLAT_XZ_EPS = 1e-18;
+
+/** Same projection as MapFlatXzPlane: keep Sun distance, XZ azimuth, y=0. */
+function flatXz(x: number, y: number, z: number): [number, number, number] {
+  const r = Math.hypot(x, y, z);
+  const rho = Math.hypot(x, z);
+  if (rho > FLAT_XZ_EPS) {
+    const s = r / rho;
+    return [x * s, 0, z * s];
+  }
+  const sgn = y >= 0 ? 1 : -1;
+  return [sgn * r, 0, 0];
+}
 
 function buildVaseGeometry(
   start: THREE.Vector3,
@@ -34,6 +58,9 @@ function buildVaseGeometry(
   kinParams: JourneyKinematicsParams,
   segmentsAlong: number,
   radialSegments: number,
+  mapByShipProperTime: boolean,
+  physicalUnitDir: THREE.Vector3,
+  flatMapXz: boolean,
 ): THREE.BufferGeometry {
   const tan = new THREE.Vector3().subVectors(end, start);
   const chordLen = tan.length();
@@ -58,7 +85,16 @@ function buildVaseGeometry(
     const kin = gammaBetaAtDistanceAlongRoute(dLy, kinParams);
     const gamma = kin?.gamma ?? 1;
     const r = Math.max(r0Base * 0.02, r0Base / Math.max(gamma, 1));
-    center.lerpVectors(start, end, t);
+    if (mapByShipProperTime) {
+      const ty = shipProperTimeYears(dLy, kinParams) ?? 0;
+      center.copy(physicalUnitDir).multiplyScalar(ty);
+      if (flatMapXz) {
+        const [fx, fy, fz] = flatXz(center.x, center.y, center.z);
+        center.set(fx, fy, fz);
+      }
+    } else {
+      center.lerpVectors(start, end, t);
+    }
 
     for (let s = 0; s <= radialSegments; s++) {
       const u = (s / radialSegments) * Math.PI * 2;
@@ -91,33 +127,35 @@ function buildVaseGeometry(
 
 export function SunToStarJourneyVisual({
   positions,
+  physicalPositions,
   index,
   distanceLy,
   mode,
   accelerationG,
   coastFraction,
   showVase,
+  mapByShipProperTime,
+  mapBlendAlphaRef,
+  mapTargetShipTime = false,
+  flatMapXzPlane = false,
   journeyLineHover,
   onJourneyLineHover,
   journeyHoverTooltipRef,
 }: SunToStarJourneyProps) {
   const { gl, camera } = useThree();
 
-  const end = useMemo(() => {
-    const x = positions[index * 3] ?? 0;
-    const y = positions[index * 3 + 1] ?? 0;
-    const z = positions[index * 3 + 2] ?? 0;
-    return new THREE.Vector3(x, y, z);
-  }, [positions, index]);
-
-  const linePoints = useMemo(
-    () =>
-      [
-        [0, 0, 0] as [number, number, number],
-        [end.x, end.y, end.z] as [number, number, number],
-      ],
-    [end],
-  );
+  const endRef = useRef(new THREE.Vector3());
+  const cylGroupRef = useRef<THREE.Group>(null);
+  const vaseMeshRef = useRef<THREE.Mesh>(null);
+  const physicalUnitDir = useMemo(() => {
+    const x = physicalPositions[index * 3] ?? 0;
+    const y = physicalPositions[index * 3 + 1] ?? 0;
+    const z = physicalPositions[index * 3 + 2] ?? 0;
+    const v = new THREE.Vector3(x, y, z);
+    const len = v.length();
+    if (len < 1e-18) return new THREE.Vector3(1, 0, 0);
+    return v.normalize();
+  }, [physicalPositions, index]);
 
   const kinParams: JourneyKinematicsParams = useMemo(
     () => ({
@@ -129,11 +167,59 @@ export function SunToStarJourneyVisual({
     [distanceLy, mode, accelerationG, coastFraction],
   );
 
+  const kinProfile: JourneyKinematicsProfile = useMemo(
+    () => ({
+      mode,
+      accelerationG,
+      coastFraction,
+    }),
+    [mode, accelerationG, coastFraction],
+  );
+
+  const lyEndVec = useMemo(() => {
+    const x = physicalPositions[index * 3] ?? 0;
+    const y = physicalPositions[index * 3 + 1] ?? 0;
+    const z = physicalPositions[index * 3 + 2] ?? 0;
+    return new THREE.Vector3(x, y, z);
+  }, [physicalPositions, index]);
+
+  const shipTauEndVec = useMemo(() => {
+    const ty = shipProperTimeYears(distanceLy, kinParams) ?? 0;
+    return physicalUnitDir.clone().multiplyScalar(ty);
+  }, [distanceLy, kinParams, physicalUnitDir]);
+
   const vaseGeo = useMemo(() => {
     if (!showVase) return null;
     const s = new THREE.Vector3(0, 0, 0);
-    return buildVaseGeometry(s, end, distanceLy, kinParams, 96, 20);
-  }, [showVase, end, distanceLy, kinParams]);
+    const rawEnd = mapByShipProperTime ? shipTauEndVec : lyEndVec;
+    const endForVase = new THREE.Vector3();
+    if (flatMapXzPlane) {
+      const [ex, ey, ez] = flatXz(rawEnd.x, rawEnd.y, rawEnd.z);
+      endForVase.set(ex, ey, ez);
+    } else {
+      endForVase.copy(rawEnd);
+    }
+    return buildVaseGeometry(
+      s,
+      endForVase,
+      distanceLy,
+      kinParams,
+      96,
+      20,
+      mapByShipProperTime,
+      physicalUnitDir,
+      flatMapXzPlane,
+    );
+  }, [
+    showVase,
+    mapByShipProperTime,
+    lyEndVec,
+    shipTauEndVec,
+    distanceLy,
+    kinParams,
+    physicalUnitDir,
+    flatMapXzPlane,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -141,7 +227,99 @@ export function SunToStarJourneyVisual({
     };
   }, [vaseGeo]);
 
+  const lineGeom = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    const arr = new Float32Array((LINE_SEGMENTS + 1) * 3);
+    g.setAttribute("position", new THREE.BufferAttribute(arr, 3));
+    g.setDrawRange(0, 2);
+    return g;
+  }, []);
+
+  const lineObject = useMemo(() => {
+    const m = new THREE.LineBasicMaterial({
+      color: "#ff8c00",
+      transparent: true,
+      opacity: 0.95,
+      depthTest: true,
+      toneMapped: false,
+    });
+    const ln = new THREE.Line(lineGeom, m);
+    ln.frustumCulled = false;
+    return ln;
+  }, [lineGeom]);
+
+  useEffect(() => {
+    return () => {
+      lineGeom.dispose();
+      (lineObject.material as THREE.Material).dispose();
+    };
+  }, [lineGeom, lineObject]);
+
+  const markerMeshRef = useRef<THREE.Mesh>(null);
+
   useFrame(() => {
+    const j = index * 3;
+    endRef.current.set(positions[j] ?? 0, positions[j + 1] ?? 0, positions[j + 2] ?? 0);
+
+    const goal = mapTargetShipTime ? 1 : 0;
+    const a = mapBlendAlphaRef?.current ?? goal;
+    const settled = Math.abs(a - goal) < BLEND_SETTLE_EPS;
+
+    const posAttr = lineGeom.attributes.position as THREE.BufferAttribute;
+    const arr = posAttr.array as Float32Array;
+    let vertCount = 2;
+    if (mapByShipProperTime && settled) {
+      vertCount = LINE_SEGMENTS + 1;
+      arr[0] = 0;
+      arr[1] = 0;
+      arr[2] = 0;
+      for (let k = 1; k <= LINE_SEGMENTS; k++) {
+        const t = k / LINE_SEGMENTS;
+        const dLy = t * distanceLy;
+        const ty = shipProperTimeYears(dLy, kinParams) ?? 0;
+        const o = k * 3;
+        let wx = physicalUnitDir.x * ty;
+        let wy = physicalUnitDir.y * ty;
+        let wz = physicalUnitDir.z * ty;
+        if (flatMapXzPlane) {
+          [wx, wy, wz] = flatXz(wx, wy, wz);
+        }
+        arr[o] = wx;
+        arr[o + 1] = wy;
+        arr[o + 2] = wz;
+      }
+    } else {
+      arr[0] = 0;
+      arr[1] = 0;
+      arr[2] = 0;
+      arr[3] = endRef.current.x;
+      arr[4] = endRef.current.y;
+      arr[5] = endRef.current.z;
+    }
+    lineGeom.setDrawRange(0, vertCount);
+    posAttr.needsUpdate = true;
+
+    const cyl = cylGroupRef.current;
+    if (cyl) {
+      const L = Math.max(endRef.current.length(), 1e-9);
+      const pr = Math.max(0.08, Math.min(1.2, 0.04 * L));
+      cyl.position.copy(endRef.current).normalize().multiplyScalar(L * 0.5);
+      cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), endRef.current.clone().normalize());
+      cyl.scale.set(pr, L, pr);
+    }
+
+    const Lm = Math.max(endRef.current.length(), 1e-9);
+    const mr = Math.max(0.04, Math.min(0.25, Lm * 0.012));
+    const marker = markerMeshRef.current;
+    if (marker) {
+      marker.scale.setScalar(mr / 0.04);
+    }
+
+    const vm = vaseMeshRef.current;
+    if (vm) {
+      vm.visible = showVase && settled;
+    }
+
     const labelEl = journeyHoverTooltipRef?.current ?? null;
     if (!labelEl || journeyLineHover === null) {
       if (labelEl) labelEl.style.visibility = "hidden";
@@ -171,38 +349,46 @@ export function SunToStarJourneyVisual({
     labelEl.style.top = `${vy}px`;
   });
 
-  const pickRadius = useMemo(() => {
-    const L = end.length();
-    return Math.max(0.08, Math.min(1.2, 0.04 * L));
-  }, [end]);
-
-  const cylinderHeight = useMemo(() => end.length(), [end]);
-  const midPoint = useMemo(() => end.clone().multiplyScalar(0.5), [end]);
-  const cylinderQuat = useMemo(() => {
-    const dir = new THREE.Vector3().copy(end).normalize();
-    return new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-  }, [end]);
-
-  const markerRadius = useMemo(() => {
-    const L = end.length();
-    return Math.max(0.04, Math.min(0.25, L * 0.012));
-  }, [end]);
-
   const onChordPointerMove = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
-    const L2 = end.dot(end);
+    const eNow = endRef.current;
+    const L2 = eNow.dot(eNow);
     if (L2 < 1e-18) return;
-    const t = Math.min(1, Math.max(0, e.point.dot(end) / L2));
-    const dLy = t * distanceLy;
+
+    let dLy: number;
+    let wx: number;
+    let wy: number;
+    let wz: number;
+
+    if (mapByShipProperTime) {
+      const u = Math.min(1, Math.max(0, e.point.dot(eNow) / L2));
+      const solved = distanceLyForFractionOfTotalShipTime(u, distanceLy, kinProfile);
+      if (solved === null) return;
+      dLy = solved;
+      const ty = shipProperTimeYears(dLy, kinParams) ?? 0;
+      wx = physicalUnitDir.x * ty;
+      wy = physicalUnitDir.y * ty;
+      wz = physicalUnitDir.z * ty;
+      if (flatMapXzPlane) {
+        [wx, wy, wz] = flatXz(wx, wy, wz);
+      }
+    } else {
+      const t = Math.min(1, Math.max(0, e.point.dot(eNow) / L2));
+      dLy = t * distanceLy;
+      wx = eNow.x * t;
+      wy = eNow.y * t;
+      wz = eNow.z * t;
+    }
+
     const kin = gammaBetaAtDistanceAlongRoute(dLy, kinParams);
     if (!kin) return;
     onJourneyLineHover({
       dLy,
       beta: kin.beta,
       gamma: kin.gamma,
-      wx: end.x * t,
-      wy: end.y * t,
-      wz: end.z * t,
+      wx,
+      wy,
+      wz,
     });
   };
 
@@ -211,7 +397,7 @@ export function SunToStarJourneyVisual({
   return (
     <group>
       {showVase && vaseGeo && (
-        <mesh geometry={vaseGeo} renderOrder={1}>
+        <mesh ref={vaseMeshRef} geometry={vaseGeo} renderOrder={1}>
           <meshBasicMaterial
             color="#2dd4bf"
             transparent
@@ -223,25 +409,16 @@ export function SunToStarJourneyVisual({
         </mesh>
       )}
 
-      <Line
-        points={linePoints}
-        color="#ff8c00"
-        lineWidth={2}
-        toneMapped={false}
-        depthTest
-        transparent
-        opacity={0.95}
-        renderOrder={2}
-      />
+      <primitive object={lineObject} renderOrder={2} />
 
-      <group position={midPoint} quaternion={cylinderQuat}>
+      <group ref={cylGroupRef} renderOrder={0}>
         <mesh
           onPointerMove={onChordPointerMove}
           onPointerOut={clearHover}
           onPointerLeave={clearHover}
           renderOrder={0}
         >
-          <cylinderGeometry args={[pickRadius, pickRadius, cylinderHeight, 10, 1, false]} />
+          <cylinderGeometry args={[1, 1, 1, 10, 1, false]} />
           <meshBasicMaterial
             transparent
             opacity={0}
@@ -254,10 +431,11 @@ export function SunToStarJourneyVisual({
 
       {journeyLineHover !== null && (
         <mesh
+          ref={markerMeshRef}
           position={[journeyLineHover.wx, journeyLineHover.wy, journeyLineHover.wz]}
           renderOrder={4}
         >
-          <sphereGeometry args={[markerRadius, 16, 16]} />
+          <sphereGeometry args={[0.04, 16, 16]} />
           <meshBasicMaterial color="#fbbf24" toneMapped={false} depthTest />
         </mesh>
       )}

@@ -172,3 +172,28 @@ export function formatLyLabel(v: number): string {
   }
   return `${sign}${body} ly`;
 }
+
+/** Grid tick label when scene units are ship proper-time years. */
+export function formatShipYearLabel(v: number): string {
+  const sign = v < 0 ? "-" : "";
+  const a = Math.abs(v);
+  let body: string;
+  if (a >= 1000 && Math.abs(a - Math.round(a / 1000) * 1000) < 1e-2) {
+    body = `${Math.round(a / 1000)}k`;
+  } else if (a >= 100 || Math.abs(a - Math.round(a)) < 1e-2) {
+    body = `${Math.round(a)}`;
+  } else if (a >= 10) {
+    body = a.toFixed(1);
+  } else if (a >= 1) {
+    body = a.toFixed(2);
+  } else {
+    body = a.toFixed(3);
+  }
+  return `${sign}${body} yr`;
+}
+
+export type GridUnit = "ly" | "shipYr";
+
+export function formatGridAxisLabel(v: number, unit: GridUnit): string {
+  return unit === "shipYr" ? formatShipYearLabel(v) : formatLyLabel(v);
+}

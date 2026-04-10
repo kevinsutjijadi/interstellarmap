@@ -12,10 +12,13 @@ export type StarPickInfo = {
 };
 
 type Props = {
+  /** Instance / hover positions (may be ship-time scaled). */
   positions: Float32Array;
+  /** Physical ly from Sun for picks; defaults to `positions`. */
+  physicalPositions?: Float32Array;
   mag: Float32Array;
-  /** Linear RGB, 3 floats per instance (from HYG `spect`) */
-  spectralRgb: Float32Array;
+  /** Linear RGB, 3 floats per instance (spectral type or distance turbo, etc.) */
+  instanceRgb: Float32Array;
   proper: string[];
   bf: string[];
   count: number;
@@ -44,8 +47,9 @@ function distanceFromOriginLy(positions: Float32Array, index: number): number {
 
 export function StarsInstanced({
   positions,
+  physicalPositions,
   mag,
-  spectralRgb,
+  instanceRgb,
   proper,
   bf,
   count,
@@ -54,14 +58,15 @@ export function StarsInstanced({
   hoverTooltipRef,
   onHoverStarIndex,
 }: Props) {
+  const pickPositions = physicalPositions ?? positions;
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const { gl, camera } = useThree();
 
   const instanceColorAttr = useMemo(() => {
     if (count === 0) return null;
-    return new THREE.InstancedBufferAttribute(spectralRgb, 3);
-  }, [count, spectralRgb]);
+    return new THREE.InstancedBufferAttribute(instanceRgb, 3);
+  }, [count, instanceRgb]);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -162,10 +167,10 @@ export function StarsInstanced({
       onStarClick({
         index: id,
         name,
-        distanceLy: distanceFromOriginLy(positions, id),
+        distanceLy: distanceFromOriginLy(pickPositions, id),
       });
     },
-    [onStarClick, proper, bf, positions],
+    [onStarClick, proper, bf, pickPositions],
   );
 
   if (count === 0) return null;

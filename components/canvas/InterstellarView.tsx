@@ -21,6 +21,9 @@ import {
   type TravelCalculatorState,
 } from "@/components/ui/RelativisticTravelPanel";
 import { StarSearchBar } from "@/components/ui/StarSearchBar";
+import type { GridUnit } from "@/lib/gridLy";
+import { turboLinearRgb } from "@/lib/turboColormap";
+import { shipProperTimeYears } from "@/lib/relativisticTravel";
 import styles from "@/app/ui.module.css";
 
 const DEFAULT_CAMERA_POSITION_LY: [number, number, number] = [7.87, 8.85, 19.8];
@@ -43,6 +46,10 @@ export function InterstellarView() {
   const [showZLines, setShowZLines] = useState(true);
   const [selectedStar, setSelectedStar] = useState<StarPickInfo | null>(null);
   const [travelCalc, setTravelCalc] = useState<TravelCalculatorState>(DEFAULT_TRAVEL_STATE);
+  /** When true, stars use turbo colormap by distance (ly or ship years to match map mode). */
+  const [starColorByDistance, setStarColorByDistance] = useState(false);
+  /** Project stars onto XZ ground plane (y=0) keeping Sun distance and XZ azimuth. */
+  const [flatMapXzPlane, setFlatMapXzPlane] = useState(false);
   const [hoverStarIndex, setHoverStarIndex] = useState<number | null>(null);
   const cameraHudRef = useRef<HTMLParagraphElement>(null);
   const hoverTooltipRef = useRef<HTMLDivElement>(null);
@@ -97,8 +104,115 @@ export function InterstellarView() {
       accelerationG: travelCalc.accelerationG,
       coastFraction: travelCalc.coastFractionPct / 100,
       showVase: travelCalc.showDilationVase,
+      mapByShipProperTime: travelCalc.mapByShipProperTime,
     };
   }, [selectedStar, travelCalc]);
+
+  const mapCoordsShipTime = travelCalc.mapByShipProperTime;
+  const coastFrac = travelCalc.coastFractionPct / 100;
+
+  const shipYrPositionsAndMax = useMemo(() => {
+    if (!data) return null;
+    const n = data.count;
+    const out = new Float32Array(n * 3);
+    let maxRadius = 0;
+    const eps = 1e-15;
+    const kin = {
+      mode: travelCalc.mode,
+      accelerationG: travelCalc.accelerationG,
+      coastFraction: coastFrac,
+    };
+    for (let i = 0; i < n; i++) {
+      const x = data.positions[i * 3]!;
+      const y = data.positions[i * 3 + 1]!;
+      const z = data.positions[i * 3 + 2]!;
+      const r = Math.hypot(x, y, z);
+      let s = 1;
+      if (r > eps) {
+        const tauYr = shipProperTimeYears(r, {
+          distanceLy: r,
+          ...kin,
+        });
+        s = tauYr !== null && tauYr >= 0 ? tauYr / r : 1;
+      }
+      const px = x * s;
+      const py = y * s;
+      const pz = z * s;
+      out[i * 3] = px;
+      out[i * 3 + 1] = py;
+      out[i * 3 + 2] = pz;
+      const hr = Math.hypot(px, pz);
+      if (hr > maxRadius) maxRadius = hr;
+    }
+    return {
+      positions: out,
+      maxRadius: Math.max(maxRadius, 50),
+    };
+  }, [data, travelCalc.mode, travelCalc.accelerationG, coastFrac]);
+
+  const mapLayout = useMemo(() => {
+    if (!data || !shipYrPositionsAndMax) return null;
+    return {
+      positionsLy: data.positions,
+      positionsShipYr: shipYrPositionsAndMax.positions,
+      maxRadiusLy: data.maxRadius,
+      maxRadiusShipYr: shipYrPositionsAndMax.maxRadius,
+      gridUnit: (mapCoordsShipTime ? "shipYr" : "ly") as GridUnit,
+      cameraUnitLabel: mapCoordsShipTime ? "ship yr" : "ly",
+      mapTargetShipTime: mapCoordsShipTime,
+    };
+  }, [data, shipYrPositionsAndMax, mapCoordsShipTime]);
+
+  const starInstanceColors = useMemo(() => {
+    if (!data || !starColorByDistance) return null;
+    const n = data.count;
+    const kin = {
+      mode: travelCalc.mode,
+      accelerationG: travelCalc.accelerationG,
+      coastFraction: coastFrac,
+    };
+    const dists = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const x = data.positions[i * 3]!;
+      const y = data.positions[i * 3 + 1]!;
+      const z = data.positions[i * 3 + 2]!;
+      const rLy = Math.hypot(x, y, z);
+      if (mapCoordsShipTime) {
+        const ty = shipProperTimeYears(rLy, { distanceLy: rLy, ...kin });
+        dists[i] = ty !== null && ty >= 0 ? ty : rLy;
+      } else {
+        dists[i] = rLy;
+      }
+    }
+    let dMin = Infinity;
+    let dMax = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const d = dists[i]!;
+      if (d < dMin) dMin = d;
+      if (d > dMax) dMax = d;
+    }
+    const span = dMax - dMin || 1;
+    const rgb = new Float32Array(n * 3);
+    const out = { r: 0, g: 0, b: 0 };
+    for (let i = 0; i < n; i++) {
+      const t = (dists[i]! - dMin) / span;
+      turboLinearRgb(t, out);
+      rgb[i * 3] = out.r;
+      rgb[i * 3 + 1] = out.g;
+      rgb[i * 3 + 2] = out.b;
+    }
+    return rgb;
+  }, [
+    data,
+    starColorByDistance,
+    mapCoordsShipTime,
+    travelCalc.mode,
+    travelCalc.accelerationG,
+    coastFrac,
+  ]);
+
+  const instanceRgb =
+    data && starInstanceColors ? starInstanceColors : data?.spectralRgb ?? new Float32Array();
 
   return (
     <div className={styles.viewRoot}>
@@ -117,7 +231,7 @@ export function InterstellarView() {
           No stars loaded after filtering.
         </div>
       )}
-      {data && data.count > 0 && (
+      {data && data.count > 0 && mapLayout && (
         <>
           <Canvas
             gl={{ antialias: true, alpha: false }}
@@ -134,6 +248,13 @@ export function InterstellarView() {
             <Suspense fallback={null}>
               <InterstellarScene
                 data={data}
+                positionsLy={mapLayout.positionsLy}
+                positionsShipYr={mapLayout.positionsShipYr}
+                maxRadiusLy={mapLayout.maxRadiusLy}
+                maxRadiusShipYr={mapLayout.maxRadiusShipYr}
+                mapTargetShipTime={mapLayout.mapTargetShipTime}
+                gridUnit={mapLayout.gridUnit}
+                cameraUnitLabel={mapLayout.cameraUnitLabel}
                 gridMode={gridMode}
                 showGrid={showGrid}
                 showZLines={showZLines}
@@ -146,6 +267,8 @@ export function InterstellarView() {
                 cameraHudRef={cameraHudRef}
                 hoverTooltipRef={hoverTooltipRef}
                 onHoverStarIndex={onHoverStarIndex}
+                instanceRgb={instanceRgb}
+                flatMapXzPlane={flatMapXzPlane}
               />
             </Suspense>
           </Canvas>
@@ -238,6 +361,11 @@ export function InterstellarView() {
             onShowGrid={setShowGrid}
             showZLines={showZLines}
             onShowZLines={setShowZLines}
+            mapShipYearsActive={mapCoordsShipTime}
+            starColorByDistance={starColorByDistance}
+            onStarColorByDistance={setStarColorByDistance}
+            flatMapXzPlane={flatMapXzPlane}
+            onFlatMapXzPlane={setFlatMapXzPlane}
           />
         </>
       )}

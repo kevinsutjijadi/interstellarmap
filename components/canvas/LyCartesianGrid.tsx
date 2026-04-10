@@ -20,7 +20,8 @@ import {
   ensureLineBudget,
   extentForGrid,
   flatSegmentsToLinePoints,
-  formatLyLabel,
+  formatGridAxisLabel,
+  type GridUnit,
   GRID_HTML_Z_INDEX_RANGE,
   GRID_LABEL_FONT_MAJOR,
   GRID_LABEL_FONT_MINOR,
@@ -30,8 +31,11 @@ import {
 
 type Props = {
   maxDataRadius: number;
+  /** When set, `extentForGrid` uses this value (updated every frame during map blend). */
+  maxDataRadiusLiveRef?: RefObject<number>;
   orbitRef: RefObject<OrbitControlsImpl | null>;
   visible: boolean;
+  gridUnit?: GridUnit;
 };
 
 const D_REF = 45;
@@ -39,7 +43,13 @@ const COARSE_LINE_BASE_PX = 0.8;
 const FINE_OPACITY_PEAK = 0.42;
 const COARSE_OPACITY_PEAK = 0.58;
 
-export function LyCartesianGrid({ maxDataRadius, orbitRef, visible }: Props) {
+export function LyCartesianGrid({
+  maxDataRadius,
+  maxDataRadiusLiveRef,
+  orbitRef,
+  visible,
+  gridUnit = "ly",
+}: Props) {
   const fineGeo = useMemo(() => new THREE.BufferGeometry(), []);
   const fineMatRef = useRef<THREE.LineBasicMaterial>(null);
   const fineLinesRef = useRef<THREE.LineSegments>(null);
@@ -84,20 +94,22 @@ export function LyCartesianGrid({ maxDataRadius, orbitRef, visible }: Props) {
       ? camera.position.distanceTo(target)
       : camera.position.length();
 
+    const mdr = maxDataRadiusLiveRef?.current ?? maxDataRadius;
+
     const lod = lyGridLod(dist, D_REF);
     const stepFine = ensureLineBudget(
-      extentForGrid(dist, maxDataRadius, lod.stepFine),
+      extentForGrid(dist, mdr, lod.stepFine),
       lod.stepFine,
       100,
     );
     const stepCoarse = ensureLineBudget(
-      extentForGrid(dist, maxDataRadius, lod.stepCoarse),
+      extentForGrid(dist, mdr, lod.stepCoarse),
       lod.stepCoarse,
       100,
     );
     const e = Math.max(
-      extentForGrid(dist, maxDataRadius, stepFine),
-      extentForGrid(dist, maxDataRadius, stepCoarse),
+      extentForGrid(dist, mdr, stepFine),
+      extentForGrid(dist, mdr, stepCoarse),
     );
 
     const key = `${stepFine}_${stepCoarse}_${Math.round(e / 20)}`;
@@ -219,7 +231,7 @@ export function LyCartesianGrid({ maxDataRadius, orbitRef, visible }: Props) {
                 }}
                 style={{ ...labelStyleMajor, opacity: 0 }}
               >
-                {formatLyLabel(v)}
+                {formatGridAxisLabel(v, gridUnit)}
               </div>
             </Html>
             <Html
@@ -237,7 +249,7 @@ export function LyCartesianGrid({ maxDataRadius, orbitRef, visible }: Props) {
                 }}
                 style={{ ...labelStyleMajor, opacity: 0 }}
               >
-                {formatLyLabel(v)}
+                {formatGridAxisLabel(v, gridUnit)}
               </div>
             </Html>
           </group>
@@ -260,7 +272,7 @@ export function LyCartesianGrid({ maxDataRadius, orbitRef, visible }: Props) {
                 }}
                 style={{ ...labelStyleMinor, opacity: 0 }}
               >
-                {formatLyLabel(v)}
+                {formatGridAxisLabel(v, gridUnit)}
               </div>
             </Html>
             <Html
@@ -278,7 +290,7 @@ export function LyCartesianGrid({ maxDataRadius, orbitRef, visible }: Props) {
                 }}
                 style={{ ...labelStyleMinor, opacity: 0 }}
               >
-                {formatLyLabel(v)}
+                {formatGridAxisLabel(v, gridUnit)}
               </div>
             </Html>
           </group>

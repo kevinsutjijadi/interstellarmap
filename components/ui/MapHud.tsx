@@ -19,6 +19,14 @@ type Props = {
   onShowGrid: (v: boolean) => void;
   showZLines: boolean;
   onShowZLines: (v: boolean) => void;
+  /** Scene grid ticks are ship proper-time years instead of ly. */
+  mapShipYearsActive?: boolean;
+  /** When true, stars are colored by turbo distance (ly or ship yr to match map). */
+  starColorByDistance: boolean;
+  onStarColorByDistance: (v: boolean) => void;
+  /** Project onto XZ ground plane (y=0) keeping Sun distance and XZ azimuth. */
+  flatMapXzPlane: boolean;
+  onFlatMapXzPlane: (v: boolean) => void;
 };
 
 function ToggleRow({
@@ -161,6 +169,11 @@ export function MapHud({
   onShowGrid,
   showZLines,
   onShowZLines,
+  mapShipYearsActive = false,
+  starColorByDistance,
+  onStarColorByDistance,
+  flatMapXzPlane,
+  onFlatMapXzPlane,
 }: Props) {
   const aboutTitleId = useId();
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -220,7 +233,7 @@ export function MapHud({
 
         <div className={styles.hudVisibilityGroup} role="group" aria-label="Visibility">
           <ToggleRow
-            label="Reference grid (ly)"
+            label={mapShipYearsActive ? "Reference grid (ship yr)" : "Reference grid (ly)"}
             on={showGrid}
             onToggle={() => onShowGrid(!showGrid)}
           />
@@ -228,6 +241,22 @@ export function MapHud({
             label="Z drop lines"
             on={showZLines}
             onToggle={() => onShowZLines(!showZLines)}
+          />
+          <ToggleRow
+            label={
+              starColorByDistance
+                ? mapShipYearsActive
+                  ? "Star color: turbo (ship yr)"
+                  : "Star color: turbo (ly)"
+                : "Star color: spectral (default)"
+            }
+            on={starColorByDistance}
+            onToggle={() => onStarColorByDistance(!starColorByDistance)}
+          />
+          <ToggleRow
+            label="Flat map (XZ)"
+            on={flatMapXzPlane}
+            onToggle={() => onFlatMapXzPlane(!flatMapXzPlane)}
           />
         </div>
 

@@ -15,6 +15,8 @@ export type TravelCalculatorState = {
   exhaustVelocityOverC: number;
   dryMassKg: number;
   showDilationVase: boolean;
+  /** When true, scene uses radial ship proper-time (yr) instead of ly. */
+  mapByShipProperTime: boolean;
 };
 
 const DEFAULT_TRAVEL_STATE: TravelCalculatorState = {
@@ -24,6 +26,7 @@ const DEFAULT_TRAVEL_STATE: TravelCalculatorState = {
   exhaustVelocityOverC: 1,
   dryMassKg: 100_000,
   showDilationVase: true,
+  mapByShipProperTime: false,
 };
 
 export { DEFAULT_TRAVEL_STATE };
@@ -267,6 +270,29 @@ export function RelativisticTravelPanel({ distanceLy, value, onChange }: Props) 
               </span>
             </p>
           </div>
+          <div className={styles.travelFieldStack}>
+            <label className={styles.travelLabel}>3D map</label>
+            <div className={styles.modeToggleGroup}>
+              <button
+                type="button"
+                onClick={() => onChange({ ...value, mapByShipProperTime: false })}
+                className={
+                  !value.mapByShipProperTime ? styles.modeBtnActive : styles.modeBtnInactive
+                }
+              >
+                Light-years
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange({ ...value, mapByShipProperTime: true })}
+                className={
+                  value.mapByShipProperTime ? styles.modeBtnActive : styles.modeBtnInactive
+                }
+              >
+                Ship years
+              </button>
+            </div>
+          </div>
           <div className={styles.detailBlock}>
             <div className={styles.detailTitle}>Journey details</div>
             <ul className={styles.detailList}>
@@ -275,11 +301,6 @@ export function RelativisticTravelPanel({ distanceLy, value, onChange }: Props) 
                 Peak γ:{" "}
                 <span className={styles.tabularNums}>{ok.peakGamma.toFixed(3)}</span>
               </li>
-              <li>Mode: {modeLabel(ok.mode)}</li>
-              <li>Accel: {ok.accelerationG.toFixed(2)}g</li>
-              {ok.mode === "brachistochrone" && (
-                <li>Coast: {(ok.coastFraction * 100).toFixed(0)}% of distance</li>
-              )}
             </ul>
           </div>
           <div className={styles.detailBlock}>

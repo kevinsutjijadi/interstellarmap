@@ -19,7 +19,8 @@ import {
   ensureLineBudget,
   extentForGrid,
   flatSegmentsToLinePoints,
-  formatLyLabel,
+  formatGridAxisLabel,
+  type GridUnit,
   GRID_HTML_Z_INDEX_RANGE,
   GRID_LABEL_FONT_MAJOR,
   GRID_LABEL_FONT_MINOR,
@@ -29,8 +30,10 @@ import {
 
 type Props = {
   maxDataRadius: number;
+  maxDataRadiusLiveRef?: RefObject<number>;
   orbitRef: RefObject<OrbitControlsImpl | null>;
   visible: boolean;
+  gridUnit?: GridUnit;
 };
 
 const D_REF = 45;
@@ -107,7 +110,13 @@ function buildRadialCoarseRingsOnly(
   return new Float32Array(verts);
 }
 
-export function LyRadialGrid({ maxDataRadius, orbitRef, visible }: Props) {
+export function LyRadialGrid({
+  maxDataRadius,
+  maxDataRadiusLiveRef,
+  orbitRef,
+  visible,
+  gridUnit = "ly",
+}: Props) {
   const fineGeo = useMemo(() => new THREE.BufferGeometry(), []);
   const fineMatRef = useRef<THREE.LineBasicMaterial>(null);
   const fineLinesRef = useRef<THREE.LineSegments>(null);
@@ -152,20 +161,22 @@ export function LyRadialGrid({ maxDataRadius, orbitRef, visible }: Props) {
       ? camera.position.distanceTo(target)
       : camera.position.length();
 
+    const mdr = maxDataRadiusLiveRef?.current ?? maxDataRadius;
+
     const lod = lyGridLod(dist, D_REF);
     const stepFine = ensureLineBudget(
-      extentForGrid(dist, maxDataRadius, lod.stepFine),
+      extentForGrid(dist, mdr, lod.stepFine),
       lod.stepFine,
       100,
     );
     const stepCoarse = ensureLineBudget(
-      extentForGrid(dist, maxDataRadius, lod.stepCoarse),
+      extentForGrid(dist, mdr, lod.stepCoarse),
       lod.stepCoarse,
       100,
     );
     const e = Math.max(
-      extentForGrid(dist, maxDataRadius, stepFine),
-      extentForGrid(dist, maxDataRadius, stepCoarse),
+      extentForGrid(dist, mdr, stepFine),
+      extentForGrid(dist, mdr, stepCoarse),
     );
 
     const key = `${stepFine}_${stepCoarse}_${Math.round(e / 20)}`;
@@ -288,7 +299,7 @@ export function LyRadialGrid({ maxDataRadius, orbitRef, visible }: Props) {
                 }}
                 style={{ ...labelMajor, opacity: 0 }}
               >
-                {formatLyLabel(r)}
+                {formatGridAxisLabel(r, gridUnit)}
               </div>
             </Html>
           )),
@@ -312,7 +323,7 @@ export function LyRadialGrid({ maxDataRadius, orbitRef, visible }: Props) {
                 }}
                 style={{ ...labelMinor, opacity: 0 }}
               >
-                {formatLyLabel(r)}
+                {formatGridAxisLabel(r, gridUnit)}
               </div>
             </Html>
           )),

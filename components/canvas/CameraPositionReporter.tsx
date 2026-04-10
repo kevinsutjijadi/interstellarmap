@@ -13,16 +13,18 @@ function formatCoordLy(n: number): string {
 
 type Props = {
   labelRef: RefObject<HTMLElement | null>;
+  /** Shown after "Camera" — e.g. "ly" or "ship yr". */
+  unitLabel?: string;
 };
 
-export function CameraPositionReporter({ labelRef }: Props) {
+export function CameraPositionReporter({ labelRef, unitLabel = "ly" }: Props) {
   const { camera } = useThree();
 
   useFrame(() => {
     const el = labelRef.current;
     if (!el) return;
     const { x, y, z } = camera.position;
-    el.textContent = `Camera (ly)  x ${formatCoordLy(x)}   y ${formatCoordLy(y)}   z ${formatCoordLy(z)}`;
+    el.textContent = `Camera (${unitLabel})  x ${formatCoordLy(x)}   y ${formatCoordLy(y)}   z ${formatCoordLy(z)}`;
   });
 
   return null;
