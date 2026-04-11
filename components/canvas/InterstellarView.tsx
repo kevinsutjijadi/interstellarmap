@@ -30,6 +30,7 @@ const DEFAULT_CAMERA_POSITION_LY: [number, number, number] = [7.87, 8.85, 19.8];
 
 /** HYG bf for Tau Ceti (catalog uses `52Tau Cet`). */
 const DEFAULT_SELECTED_BF = "52Tau Cet";
+const REAL_DIST_GRADIENT_CUTOFF_LY = 500;
 
 function formatDistanceLy(ly: number): string {
   if (!Number.isFinite(ly)) return "—";
@@ -190,6 +191,9 @@ export function InterstellarView() {
       const d = dists[i]!;
       if (d < dMin) dMin = d;
       if (d > dMax) dMax = d;
+    }
+    if (dMax > REAL_DIST_GRADIENT_CUTOFF_LY && mapCoordsShipTime) {
+      dMax = REAL_DIST_GRADIENT_CUTOFF_LY;
     }
     const span = dMax - dMin || 1;
     const rgb = new Float32Array(n * 3);

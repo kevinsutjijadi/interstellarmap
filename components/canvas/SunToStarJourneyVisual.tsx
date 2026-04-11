@@ -69,7 +69,7 @@ function buildVaseGeometry(
   const right = new THREE.Vector3().crossVectors(up, tan).normalize();
   const binorm = new THREE.Vector3().crossVectors(tan, right).normalize();
 
-  const r0Base = Math.min(0.5, 0.08 * chordLen);
+  const r0Base = Math.min(4, 0.08 * chordLen);
 
   const nRings = segmentsAlong + 1;
   const vertsPerRing = radialSegments + 1;

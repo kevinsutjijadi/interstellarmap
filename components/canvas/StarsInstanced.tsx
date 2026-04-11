@@ -91,7 +91,7 @@ export function StarsInstanced({
     const dist = target
       ? camera.position.distanceTo(target)
       : camera.position.length();
-    const zoomScale = THREE.MathUtils.clamp(dist * 0.0022, 0.1, 180);
+    const zoomScale = THREE.MathUtils.clamp(dist * 0.0044, 0.2, 180);
 
     for (let i = 0; i < count; i++) {
       const bx = positions[i * 3]!;

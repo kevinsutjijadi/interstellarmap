@@ -4,12 +4,12 @@
  * @see https://gist.githubusercontent.com/mikhailov-work/0d177465a8151eb6ede1768d51d476c7/raw/
  */
 
-const K_RED_4 = [0.13572138, 4.6153926, -42.66032258, 132.13108234] as const;
-const K_GREEN_4 = [0.09140261, 2.19418839, 4.84296658, -14.18503333] as const;
-const K_BLUE_4 = [0.1066733, 12.64194608, -60.58204836, 110.36276771] as const;
-const K_RED_2 = [-152.94239396, 59.28637943] as const;
-const K_GREEN_2 = [4.27729857, 2.82956604] as const;
-const K_BLUE_2 = [-89.90310912, 27.34824973] as const;
+const K_RED_4 = [0.57973173, 3.97174546, -57.16159572, 178.748524] as const;
+const K_GREEN_4 = [0.37984979, 0.2722822, -3.06130931, 38.06867223] as const;
+const K_BLUE_4 = [0.99969151, -3.65085735, 38.70829727, -127.99577895] as const;
+const K_RED_2 = [-203.38935502, 78.2506174] as const;
+const K_GREEN_2 = [-74.5663167, 39.20663582] as const;
+const K_BLUE_2 = [153.4090874, -61.05082182] as const;
 
 function srgbChannelToLinear(c: number): number {
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);

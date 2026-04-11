@@ -321,7 +321,8 @@
 
 .toggleRowOff {
   composes: toggleRow;
-  color: #71717a;
+  color: #070707;
+  background: #71717a;
 }
 
 .toggleRowOff:hover {

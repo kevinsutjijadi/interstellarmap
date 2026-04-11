@@ -250,6 +250,14 @@ export function RelativisticTravelPanel({ distanceLy, value, onChange }: Props) 
             <div className={styles.resultCard}>
               <div className={styles.resultCardTitle}>Ship time</div>
               <p className={styles.resultPrimary}>{formatDurationRough(ok.shipTimeS)}</p>
+            </div>
+            <div className={styles.resultCard}>
+              <div className={styles.resultCardTitle}>Earth time</div>
+              <p className={styles.resultPrimary}>{formatDurationRough(ok.earthTimeS)}</p>
+            </div>
+          </div>
+          <div style={{display: "flex", gap: "0.5rem", width: "100%", justifyContent: "space-between"}}>
+            <div className={styles.resultCard}>
               <p className={styles.resultMuted}>
                 Earth / ship ≈{" "}
                 <span className={styles.resultMutedStrong}>
@@ -257,21 +265,9 @@ export function RelativisticTravelPanel({ distanceLy, value, onChange }: Props) 
                 </span>
               </p>
             </div>
-            <div className={styles.resultCard}>
-              <div className={styles.resultCardTitle}>Earth time</div>
-              <p className={styles.resultPrimary}>{formatDurationRough(ok.earthTimeS)}</p>
-            </div>
-          </div>
-          <div className={styles.resultCard}>
-            <p className={styles.resultMuted}>
-              Earth / ship ≈{" "}
-              <span className={styles.resultMutedStrong}>
-                {ok.timeDilationRatio.toFixed(2)}×
-              </span>
-            </p>
           </div>
           <div className={styles.travelFieldStack}>
-            <label className={styles.travelLabel}>3D map</label>
+            <label className={styles.travelLabel}>3D map units</label>
             <div className={styles.modeToggleGroup}>
               <button
                 type="button"
