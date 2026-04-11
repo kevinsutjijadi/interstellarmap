@@ -93,6 +93,7 @@ export function StarsInstanced({
       : camera.position.length();
     const zoomScale = THREE.MathUtils.clamp(dist * 0.0044, 0.2, 180);
 
+    let maxWorldExtent = 0;
     for (let i = 0; i < count; i++) {
       const bx = positions[i * 3]!;
       const by = positions[i * 3 + 1]!;
@@ -102,8 +103,17 @@ export function StarsInstanced({
       dummy.scale.setScalar(s);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
+      const rFromSun = Math.hypot(bx, by, bz);
+      const outer = rFromSun + s;
+      if (outer > maxWorldExtent) maxWorldExtent = outer;
     }
     mesh.instanceMatrix.needsUpdate = true;
+
+    // InstancedMesh raycast caches boundingSphere after first compute; it must match current
+    // instance matrices or the early-out sphere test rejects all hits (breaks hover / click).
+    if (!mesh.boundingSphere) mesh.boundingSphere = new THREE.Sphere();
+    mesh.boundingSphere.center.set(0, 0, 0);
+    mesh.boundingSphere.radius = Math.max(maxWorldExtent, 1);
 
     const labelEl = hoverTooltipRef?.current ?? null;
     if (!labelEl || hovered === null || hovered < 0 || hovered >= count) {

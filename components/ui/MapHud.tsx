@@ -27,6 +27,11 @@ type Props = {
   /** Project onto XZ ground plane (y=0) keeping Sun distance and XZ azimuth. */
   flatMapXzPlane: boolean;
   onFlatMapXzPlane: (v: boolean) => void;
+  /** Narrow viewports: when true, the control panel is hidden (About modal still mounts). */
+  mobilePanelCollapsed?: boolean;
+  /** Narrow viewports: collapse control inside the open panel. */
+  onMobilePanelCollapse?: () => void;
+  isMobileLayout?: boolean;
 };
 
 function ToggleRow({
@@ -157,6 +162,12 @@ function AboutModal({
             </li>
           </ul>
         </section>
+
+        <section className={styles.modalSectionBorderTop}>
+          <p className={styles.modalText}>
+            Made by Kevin Sutjijadi © 2026
+          </p>
+        </section>
       </div>
     </div>
   );
@@ -174,6 +185,9 @@ export function MapHud({
   onStarColorByDistance,
   flatMapXzPlane,
   onFlatMapXzPlane,
+  mobilePanelCollapsed = false,
+  onMobilePanelCollapse,
+  isMobileLayout = false,
 }: Props) {
   const aboutTitleId = useId();
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -201,7 +215,22 @@ export function MapHud({
     <>
       <AboutModal open={aboutOpen} onClose={closeAbout} titleId={aboutTitleId} />
 
-      <div className={styles.hudPanel}>
+      {!(isMobileLayout && mobilePanelCollapsed) && (
+      <div
+        id="interstellar-map-hud-panel"
+        className={styles.hudPanel}
+      >
+        {isMobileLayout && onMobilePanelCollapse && (
+          <button
+            type="button"
+            onClick={onMobilePanelCollapse}
+            className={styles.hudMobilePanelCollapse}
+            aria-expanded
+            aria-label="Hide map controls"
+          >
+            ▼ Map controls
+          </button>
+        )}
         <div
           className={styles.hudSegmentGroup}
           role="group"
@@ -268,6 +297,7 @@ export function MapHud({
           About &amp; help
         </button>
       </div>
+      )}
     </>
   );
 }

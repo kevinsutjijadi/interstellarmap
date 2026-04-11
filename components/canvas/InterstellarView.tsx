@@ -32,6 +32,8 @@ const DEFAULT_CAMERA_POSITION_LY: [number, number, number] = [7.87, 8.85, 19.8];
 const DEFAULT_SELECTED_BF = "52Tau Cet";
 const REAL_DIST_GRADIENT_CUTOFF_LY = 500;
 
+const MOBILE_MQ = "(max-width: 768px)";
+
 function formatDistanceLy(ly: number): string {
   if (!Number.isFinite(ly)) return "—";
   if (ly < 1e-6) return `${ly.toExponential(2)} ly`;
@@ -57,6 +59,22 @@ export function InterstellarView() {
   const journeyHoverTooltipRef = useRef<HTMLDivElement>(null);
   const [journeyLineHover, setJourneyLineHover] = useState<JourneyLineHoverPayload | null>(null);
   const appliedDefaultSelectionRef = useRef(false);
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
+  const [starAsideCollapsed, setStarAsideCollapsed] = useState(false);
+  const [mapHudCollapsed, setMapHudCollapsed] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(MOBILE_MQ);
+    const sync = () => setIsMobileLayout(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    setStarAsideCollapsed(false);
+  }, [selectedStar?.index]);
 
   useEffect(() => {
     if (!data || data.count === 0 || appliedDefaultSelectionRef.current) return;
@@ -192,7 +210,7 @@ export function InterstellarView() {
       if (d < dMin) dMin = d;
       if (d > dMax) dMax = d;
     }
-    if (dMax > REAL_DIST_GRADIENT_CUTOFF_LY && mapCoordsShipTime) {
+    if (!mapCoordsShipTime) {
       dMax = REAL_DIST_GRADIENT_CUTOFF_LY;
     }
     const span = dMax - dMin || 1;
@@ -273,6 +291,7 @@ export function InterstellarView() {
                 onHoverStarIndex={onHoverStarIndex}
                 instanceRgb={instanceRgb}
                 flatMapXzPlane={flatMapXzPlane}
+                enableAutoRotate={!isMobileLayout}
               />
             </Suspense>
           </Canvas>
@@ -326,38 +345,78 @@ export function InterstellarView() {
           )}
           {selectedStar && (
             <aside
-              className={styles.starAside}
+              className={[
+                styles.starAside,
+                isMobileLayout && styles.starAsideMobile,
+                isMobileLayout && starAsideCollapsed && styles.starAsideMobileCollapsed,
+              ]
+                .filter(Boolean)
+                .join(" ")}
               aria-label="Selected star"
             >
               <div className={styles.starAsideHeader}>
                 <h2 className={styles.starAsideTitle}>
                   {selectedStar.name}
                 </h2>
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  className={styles.iconButton}
-                  aria-label="Close star details"
-                >
-                  ✕
-                </button>
-              </div>
-              <dl className={styles.starAsideDl}>
-                <div className={styles.starAsideRow}>
-                  <dt className={styles.starAsideDt}>Distance from Sun</dt>
-                  <dd className={styles.starAsideDd}>
-                    {formatDistanceLy(selectedStar.distanceLy)}
-                  </dd>
+                <div className={styles.starAsideHeaderActions}>
+                  {isMobileLayout && (
+                    <button
+                      type="button"
+                      onClick={() => setStarAsideCollapsed((c) => !c)}
+                      className={styles.iconButton}
+                      aria-expanded={!starAsideCollapsed}
+                      aria-label={
+                        starAsideCollapsed
+                          ? "Expand star details"
+                          : "Collapse star details"
+                      }
+                    >
+                      {starAsideCollapsed ? "▲" : "▼"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className={styles.iconButton}
+                    aria-label="Close star details"
+                  >
+                    ✕
+                  </button>
                 </div>
-              </dl>
-              <RelativisticTravelPanel
-                distanceLy={selectedStar.distanceLy}
-                value={travelCalc}
-                onChange={setTravelCalc}
-              />
+              </div>
+              <div className={styles.starAsideBody}>
+                <dl className={styles.starAsideDl}>
+                  <div className={styles.starAsideRow}>
+                    <dt className={styles.starAsideDt}>Distance from Sun</dt>
+                    <dd className={styles.starAsideDd}>
+                      {formatDistanceLy(selectedStar.distanceLy)}
+                    </dd>
+                  </div>
+                </dl>
+                <RelativisticTravelPanel
+                  distanceLy={selectedStar.distanceLy}
+                  value={travelCalc}
+                  onChange={setTravelCalc}
+                />
+              </div>
             </aside>
           )}
-          <StarSearchBar data={data} onSelectStar={onStarClick} />
+          <StarSearchBar
+            data={data}
+            onSelectStar={onStarClick}
+            isMobileLayout={isMobileLayout}
+          />
+          {isMobileLayout && mapHudCollapsed && (
+            <button
+              type="button"
+              className={styles.mapHudMobileExpand}
+              onClick={() => setMapHudCollapsed(false)}
+              aria-expanded={false}
+              aria-label="Show map controls"
+            >
+              ▲ Map controls
+            </button>
+          )}
           <MapHud
             gridMode={gridMode}
             onGridMode={setGridMode}
@@ -370,6 +429,9 @@ export function InterstellarView() {
             onStarColorByDistance={setStarColorByDistance}
             flatMapXzPlane={flatMapXzPlane}
             onFlatMapXzPlane={setFlatMapXzPlane}
+            isMobileLayout={isMobileLayout}
+            mobilePanelCollapsed={isMobileLayout && mapHudCollapsed}
+            onMobilePanelCollapse={() => setMapHudCollapsed(true)}
           />
         </>
       )}

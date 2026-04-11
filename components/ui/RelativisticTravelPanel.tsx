@@ -256,16 +256,6 @@ export function RelativisticTravelPanel({ distanceLy, value, onChange }: Props) 
               <p className={styles.resultPrimary}>{formatDurationRough(ok.earthTimeS)}</p>
             </div>
           </div>
-          <div style={{display: "flex", gap: "0.5rem", width: "100%", justifyContent: "space-between"}}>
-            <div className={styles.resultCard}>
-              <p className={styles.resultMuted}>
-                Earth / ship ≈{" "}
-                <span className={styles.resultMutedStrong}>
-                  {ok.timeDilationRatio.toFixed(2)}×
-                </span>
-              </p>
-            </div>
-          </div>
           <div className={styles.travelFieldStack}>
             <label className={styles.travelLabel}>3D map units</label>
             <div className={styles.modeToggleGroup}>
@@ -289,27 +279,36 @@ export function RelativisticTravelPanel({ distanceLy, value, onChange }: Props) 
               </button>
             </div>
           </div>
-          <div className={styles.detailBlock}>
-            <div className={styles.detailTitle}>Journey details</div>
-            <ul className={styles.detailList}>
-              <li>Peak v/c: {ok.peakBeta.toFixed(4)}</li>
-              <li>
-                Peak γ:{" "}
-                <span className={styles.tabularNums}>{ok.peakGamma.toFixed(3)}</span>
-              </li>
-            </ul>
+          <div style={{display: "flex", gap: "0.5rem", width: "100%", justifyContent: "space-between"}}>
+            <div className={styles.resultCard}>
+              <p className={styles.resultMuted}>
+                Earth / ship ≈{" "}
+                <span className={styles.resultMutedStrong}>
+                  {ok.timeDilationRatio.toFixed(2)}×
+                </span>
+              </p>
+              <ul className={styles.detailList}>
+                <li>Peak v/c: {ok.peakBeta.toFixed(4)}</li>
+                <li>
+                  Peak γ:{" "}
+                  <span className={styles.tabularNums}>{ok.peakGamma.toFixed(3)}</span>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className={styles.detailBlock}>
-            <div className={styles.detailTitle}>Rocket mass ratio</div>
-            <ul className={styles.detailList}>
-              <li>
-                Mass ratio (adj.):{" "}
-                <span className={styles.tabularNums}>{ok.massRatioAdjusted.toPrecision(4)}</span> : 1
-              </li>
-              <li>Launch mass: {formatMassKg(ok.launchMassKg)}</li>
-              <li>Fuel: {formatMassKg(ok.fuelMassKg)}</li>
-              <li>Energy (mc²): {formatEnergyJ(ok.fuelEnergyJ)}</li>
-            </ul>
+          <div style={{display: "flex", gap: "0.5rem", width: "100%", justifyContent: "space-between"}}>
+            <div className={styles.resultCard}>
+              <div className={styles.detailTitle}>Rocket mass ratio</div>
+                <ul className={styles.detailList}>
+                  <li>
+                    Mass ratio (adj.):{" "}
+                    <span className={styles.tabularNums}>{ok.massRatioAdjusted.toPrecision(4)}</span> : 1
+                  </li>
+                  <li>Launch mass: {formatMassKg(ok.launchMassKg)}</li>
+                  <li>Fuel: {formatMassKg(ok.fuelMassKg)}</li>
+                  <li>Energy (mc²): {formatEnergyJ(ok.fuelEnergyJ)}</li>
+                </ul>
+              </div>
           </div>
         </div>
       )}

@@ -64,15 +64,18 @@ function filterStars(data: StarData, rawQuery: string): Hit[] {
 type Props = {
   data: StarData;
   onSelectStar: (info: StarPickInfo) => void;
+  /** Narrow layout: compact top-right slot; field grows while focused. */
+  isMobileLayout?: boolean;
 };
 
-export function StarSearchBar({ data, onSelectStar }: Props) {
+export function StarSearchBar({ data, onSelectStar, isMobileLayout = false }: Props) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [searchFieldFocused, setSearchFieldFocused] = useState(false);
 
   const hits = useMemo(() => filterStars(data, query), [data, query]);
   const showList = open && query.trim().length > 0;
@@ -139,7 +142,14 @@ export function StarSearchBar({ data, onSelectStar }: Props) {
   );
 
   return (
-    <div ref={rootRef} className={styles.searchRoot}>
+    <div
+      ref={rootRef}
+      className={
+        isMobileLayout
+          ? `${styles.searchRoot} ${styles.searchRootMobile}`
+          : styles.searchRoot
+      }
+    >
       <label htmlFor={listId} className={styles.srOnly}>
         Search stars by name or constellation
       </label>
@@ -153,14 +163,24 @@ export function StarSearchBar({ data, onSelectStar }: Props) {
         aria-autocomplete="list"
         autoComplete="off"
         spellCheck={false}
-        placeholder="Search star (name, Bayer–Flamsteed, constellation)…"
+        placeholder={
+          isMobileLayout
+            ? searchFieldFocused || query.length > 0
+              ? "Search name, BF, constellation…"
+              : "⌕"
+            : "Search star (name, Bayer–Flamsteed, constellation)…"
+        }
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
           setActiveIdx(0);
         }}
-        onFocus={() => query.trim() && setOpen(true)}
+        onFocus={() => {
+          setSearchFieldFocused(true);
+          if (query.trim()) setOpen(true);
+        }}
+        onBlur={() => setSearchFieldFocused(false)}
         onKeyDown={onKeyDown}
         className={styles.searchInput}
       />

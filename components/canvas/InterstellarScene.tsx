@@ -1,10 +1,14 @@
 "use client";
 
 import { useMemo, useRef, type RefObject } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
+import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
+  FlatMapBlendTicker,
   InitBlendAlphaOnData,
+  InitFlatBlendAlphaOnData,
   MapBlendCompute,
   MapBlendTicker,
   MapFlatXzPlane,
@@ -58,6 +62,8 @@ type Props = {
   onHoverStarIndex: (index: number | null) => void;
   instanceRgb: Float32Array;
   flatMapXzPlane: boolean;
+  /** When false, camera does not idle-rotate (e.g. mobile). */
+  enableAutoRotate?: boolean;
 };
 
 export function InterstellarScene({
@@ -83,12 +89,22 @@ export function InterstellarScene({
   onHoverStarIndex,
   instanceRgb,
   flatMapXzPlane,
+  enableAutoRotate = true,
 }: Props) {
   const orbitRef = useRef<OrbitControlsImpl>(null);
+  const { camera } = useThree();
+  useFrame(() => {
+    const ctrl = orbitRef.current;
+    if (!ctrl) return;
+    const d = camera.position.distanceTo(ctrl.target);
+    // Wheel dolly uses a fixed ~pow(0.95, zoomSpeed) factor per notch (ignores wheel delta),
+    // so at huge distances zoom-in feels stuck unless zoomSpeed scales up with distance.
+    ctrl.zoomSpeed =
+      d < 120 ? 1 : THREE.MathUtils.clamp(1 + 1.75 * Math.log10(d / 80), 1, 20);
+  });
   const mapBlendAlphaRef = useRef(0);
+  const flatMapBlendAlphaRef = useRef(0);
   const maxRadiusLiveRef = useRef(maxRadiusLy);
-  const flatMapXzRef = useRef(flatMapXzPlane);
-  flatMapXzRef.current = flatMapXzPlane;
 
   const blendPositionsBuffer = useMemo(() => {
     const b = new Float32Array(data.count * 3);
@@ -110,7 +126,13 @@ export function InterstellarScene({
         alphaRef={mapBlendAlphaRef}
         dataEpoch={data.count}
       />
+      <InitFlatBlendAlphaOnData
+        flatMapTarget={flatMapXzPlane}
+        alphaRef={flatMapBlendAlphaRef}
+        dataEpoch={data.count}
+      />
       <MapBlendTicker targetShipTime={mapTargetShipTime} alphaRef={mapBlendAlphaRef} />
+      <FlatMapBlendTicker flatMapTarget={flatMapXzPlane} alphaRef={flatMapBlendAlphaRef} />
       <MapBlendCompute
         positionsLy={positionsLy}
         positionsShip={positionsShipYr}
@@ -122,7 +144,7 @@ export function InterstellarScene({
         maxRadiusOutRef={maxRadiusLiveRef}
       />
       <MapFlatXzPlane
-        enabledRef={flatMapXzRef}
+        alphaRef={flatMapBlendAlphaRef}
         count={data.count}
         positions={blendPositionsBuffer}
         maxRadiusOutRef={maxRadiusLiveRef}
@@ -135,7 +157,7 @@ export function InterstellarScene({
         dampingFactor={0.06}
         minDistance={0.5}
         maxDistance={1e7}
-        autoRotate
+        autoRotate={enableAutoRotate}
         autoRotateSpeed={0.15}
       />
 
@@ -185,6 +207,7 @@ export function InterstellarScene({
           mapBlendAlphaRef={mapBlendAlphaRef}
           mapTargetShipTime={mapTargetShipTime}
           flatMapXzPlane={flatMapXzPlane}
+          flatMapBlendAlphaRef={flatMapBlendAlphaRef}
           journeyLineHover={journeyLineHover}
           onJourneyLineHover={onJourneyLineHover}
           journeyHoverTooltipRef={journeyHoverTooltipRef}

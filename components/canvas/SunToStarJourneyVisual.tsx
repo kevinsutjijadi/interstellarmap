@@ -12,6 +12,7 @@ import {
   type JourneyKinematicsProfile,
 } from "@/lib/relativisticTravel";
 import type { JourneyLineHoverPayload } from "./journeyLineHoverPayload";
+import { smoothstep01 } from "./MapCoordinateBlend";
 
 export type SunToStarJourneyProps = {
   /** Display-space star position (ly / ship yr / blended while map animates). */
@@ -29,6 +30,8 @@ export type SunToStarJourneyProps = {
   mapTargetShipTime?: boolean;
   /** When true, vase aims at the flattened map position; τ spine is projected to XZ at each ring (mesh stays 3D). */
   flatMapXzPlane?: boolean;
+  /** Animated 0↔1 toward flat map; vase/τ polyline wait until settled like {@link mapBlendAlphaRef}. */
+  flatMapBlendAlphaRef?: RefObject<number>;
   journeyLineHover: JourneyLineHoverPayload | null;
   onJourneyLineHover: (payload: JourneyLineHoverPayload | null) => void;
   journeyHoverTooltipRef: RefObject<HTMLDivElement | null>;
@@ -138,6 +141,7 @@ export function SunToStarJourneyVisual({
   mapBlendAlphaRef,
   mapTargetShipTime = false,
   flatMapXzPlane = false,
+  flatMapBlendAlphaRef,
   journeyLineHover,
   onJourneyLineHover,
   journeyHoverTooltipRef,
@@ -261,9 +265,13 @@ export function SunToStarJourneyVisual({
     const j = index * 3;
     endRef.current.set(positions[j] ?? 0, positions[j + 1] ?? 0, positions[j + 2] ?? 0);
 
-    const goal = mapTargetShipTime ? 1 : 0;
-    const a = mapBlendAlphaRef?.current ?? goal;
-    const settled = Math.abs(a - goal) < BLEND_SETTLE_EPS;
+    const mapGoal = mapTargetShipTime ? 1 : 0;
+    const a = mapBlendAlphaRef?.current ?? mapGoal;
+    const mapSettled = Math.abs(a - mapGoal) < BLEND_SETTLE_EPS;
+    const flatGoal = flatMapXzPlane ? 1 : 0;
+    const fa = flatMapBlendAlphaRef?.current ?? flatGoal;
+    const flatSettled = Math.abs(fa - flatGoal) < BLEND_SETTLE_EPS;
+    const settled = mapSettled && flatSettled;
 
     const posAttr = lineGeom.attributes.position as THREE.BufferAttribute;
     const arr = posAttr.array as Float32Array;
@@ -369,8 +377,15 @@ export function SunToStarJourneyVisual({
       wx = physicalUnitDir.x * ty;
       wy = physicalUnitDir.y * ty;
       wz = physicalUnitDir.z * ty;
-      if (flatMapXzPlane) {
-        [wx, wy, wz] = flatXz(wx, wy, wz);
+      const flatGoalH = flatMapXzPlane ? 1 : 0;
+      const faH = flatMapBlendAlphaRef?.current ?? flatGoalH;
+      const wFlat = smoothstep01(faH);
+      if (wFlat > 1e-9) {
+        const [fx, fy, fz] = flatXz(wx, wy, wz);
+        const om = 1 - wFlat;
+        wx = wx * om + fx * wFlat;
+        wy = wy * om + fy * wFlat;
+        wz = wz * om + fz * wFlat;
       }
     } else {
       const t = Math.min(1, Math.max(0, e.point.dot(eNow) / L2));

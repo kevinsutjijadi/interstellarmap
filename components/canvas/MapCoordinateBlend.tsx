@@ -41,7 +41,7 @@ type MapBlendComputeProps = {
   maxRadiusOutRef: MutableRefObject<number>;
 };
 
-function smoothstep01(t: number): number {
+export function smoothstep01(t: number): number {
   const x = Math.min(1, Math.max(0, t));
   return x * x * (3 - 2 * x);
 }
@@ -95,26 +95,68 @@ export function InitBlendAlphaOnData({ targetShipTime, alphaRef, dataEpoch }: In
   return null;
 }
 
+type InitFlatBlendAlphaProps = {
+  flatMapTarget: boolean;
+  alphaRef: MutableRefObject<number>;
+  dataEpoch: number;
+};
+
+/** Snap flat-map blend when the star catalog reloads. */
+export function InitFlatBlendAlphaOnData({ flatMapTarget, alphaRef, dataEpoch }: InitFlatBlendAlphaProps) {
+  const targetRef = useRef(flatMapTarget);
+  targetRef.current = flatMapTarget;
+  useLayoutEffect(() => {
+    alphaRef.current = targetRef.current ? 1 : 0;
+  }, [dataEpoch, alphaRef]);
+  return null;
+}
+
+type FlatMapBlendTickerProps = {
+  flatMapTarget: boolean;
+  alphaRef: MutableRefObject<number>;
+  durationSec?: number;
+};
+
+/** Same ramp as {@link MapBlendTicker}, for flat XZ projection vs 3D. */
+export function FlatMapBlendTicker({
+  flatMapTarget,
+  alphaRef,
+  durationSec = DEFAULT_DURATION_SEC,
+}: FlatMapBlendTickerProps) {
+  useFrame((_, dt) => {
+    const goal = flatMapTarget ? 1 : 0;
+    const step = durationSec > 1e-6 ? dt / durationSec : 1;
+    if (alphaRef.current < goal) {
+      alphaRef.current = Math.min(goal, alphaRef.current + step);
+    } else if (alphaRef.current > goal) {
+      alphaRef.current = Math.max(goal, alphaRef.current - step);
+    }
+  }, -100);
+  return null;
+}
+
 type MapFlatXzPlaneProps = {
-  enabledRef: MutableRefObject<boolean>;
+  /** 0 = 3D (after ly/ship blend), 1 = full XZ projection; animated by {@link FlatMapBlendTicker}. */
+  alphaRef: MutableRefObject<number>;
   count: number;
   positions: Float32Array;
   maxRadiusOutRef: MutableRefObject<number>;
 };
 
 /**
- * After ly/ship blend: project onto the Three.js XZ ground plane (y=0) while keeping
- * Sun distance r = |p| and the azimuth in XZ (same angle as (x,z) viewed from above).
- * Points on the ±Y axis map to (±r, 0, 0). Updates `maxRadiusOutRef` from max scene extent (≥ 50 ly).
+ * After ly/ship blend: lerps each star toward projection onto the XZ ground plane (y=0) while keeping
+ * Sun distance r = |p| and the azimuth in XZ. Points on the ±Y axis map to (±r, 0, 0) at w=1.
+ * Updates `maxRadiusOutRef` from max scene extent (≥ 50 ly) when w > 0.
  */
 export function MapFlatXzPlane({
-  enabledRef,
+  alphaRef,
   count,
   positions,
   maxRadiusOutRef,
 }: MapFlatXzPlaneProps) {
   useFrame(() => {
-    if (!enabledRef.current) return;
+    const w = smoothstep01(alphaRef.current);
+    if (w <= 1e-12) return;
     const eps = 1e-18;
     let maxExtent = 0;
     for (let i = 0; i < count; i++) {
@@ -124,22 +166,28 @@ export function MapFlatXzPlane({
       const z = positions[j + 2]!;
       const r = Math.hypot(x, y, z);
       const rho = Math.hypot(x, z);
+      let fx: number;
+      let fy: number;
+      let fz: number;
       if (rho > eps) {
         const s = r / rho;
-        positions[j] = x * s;
-        positions[j + 1] = 0;
-        positions[j + 2] = z * s;
+        fx = x * s;
+        fy = 0;
+        fz = z * s;
       } else {
         const sgn = y >= 0 ? 1 : -1;
-        positions[j] = sgn * r;
-        positions[j + 1] = 0;
-        positions[j + 2] = 0;
+        fx = sgn * r;
+        fy = 0;
+        fz = 0;
       }
-      const rx = positions[j]!;
-      const ry = positions[j + 1]!;
-      const rz = positions[j + 2]!;
-      const horiz = Math.hypot(rx, rz);
-      const rad = Math.hypot(rx, ry, rz);
+      const px = x + (fx - x) * w;
+      const py = y + (fy - y) * w;
+      const pz = z + (fz - z) * w;
+      positions[j] = px;
+      positions[j + 1] = py;
+      positions[j + 2] = pz;
+      const horiz = Math.hypot(px, pz);
+      const rad = Math.hypot(px, py, pz);
       const e = Math.max(horiz, rad);
       if (e > maxExtent) maxExtent = e;
     }
