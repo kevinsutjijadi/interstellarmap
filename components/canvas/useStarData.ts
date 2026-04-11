@@ -38,6 +38,20 @@ export function findStarIndexByBf(data: StarData, bf: string): number | null {
   return null;
 }
 
+function normalizeProperKey(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/** Match HYG `proper` name case-insensitively (first match if duplicates). */
+export function findStarIndexByProper(data: StarData, proper: string): number | null {
+  const target = normalizeProperKey(proper);
+  if (!target) return null;
+  for (let i = 0; i < data.count; i++) {
+    if (normalizeProperKey(data.proper[i] ?? "") === target) return i;
+  }
+  return null;
+}
+
 export function distanceFromSunLy(data: StarData, index: number): number {
   const i = index * 3;
   const x = data.positions[i] ?? 0;
@@ -284,7 +298,14 @@ function parseHYGCSV(text: string): StarData {
   };
 }
 
-export function useStarData(): {
+export type StarCatalogMode = "filtered" | "full";
+
+const CATALOG_CSV: Record<StarCatalogMode, string> = {
+  filtered: "hyg_v42_filtered.csv",
+  full: "hyg_v42.csv",
+};
+
+export function useStarData(catalog: StarCatalogMode = "filtered"): {
   data: StarData | null;
   loading: boolean;
   error: Error | null;
@@ -295,10 +316,14 @@ export function useStarData(): {
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setData(null);
     (async () => {
       try {
         const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-        const res = await fetch(`${base}/hyg_v42_filtered.csv`);
+        const file = CATALOG_CSV[catalog];
+        const res = await fetch(`${base}/${file}`);
         if (!res.ok) throw new Error(`Failed to load star data: ${res.status}`);
         const text = await res.text();
         if (cancelled) return;
@@ -312,7 +337,7 @@ export function useStarData(): {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalog]);
 
   return { data, loading, error };
 }

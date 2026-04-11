@@ -1,6 +1,7 @@
 "use client";
 
 import type { GridMode } from "@/components/canvas/InterstellarScene";
+import type { StarCatalogMode } from "@/components/canvas/useStarData";
 import { useCallback, useEffect, useId, useState } from "react";
 import styles from "@/app/ui.module.css";
 
@@ -15,6 +16,8 @@ const LINKS = {
 type Props = {
   gridMode: GridMode;
   onGridMode: (mode: GridMode) => void;
+  catalogMode: StarCatalogMode;
+  onCatalogMode: (mode: StarCatalogMode) => void;
   showGrid: boolean;
   onShowGrid: (v: boolean) => void;
   showZLines: boolean;
@@ -176,6 +179,8 @@ function AboutModal({
 export function MapHud({
   gridMode,
   onGridMode,
+  catalogMode,
+  onCatalogMode,
   showGrid,
   onShowGrid,
   showZLines,
@@ -257,6 +262,35 @@ export function MapHud({
             }
           >
             Radial
+          </button>
+        </div>
+
+        <div
+          className={styles.hudSegmentGroup}
+          role="group"
+          aria-label="Star catalog"
+        >
+          <button
+            type="button"
+            onClick={() => onCatalogMode("filtered")}
+            className={
+              catalogMode === "filtered"
+                ? styles.hudSegmentBtnActive
+                : styles.hudSegmentBtnInactive
+            }
+          >
+            {"Only named (3,225 stars)"}
+          </button>
+          <button
+            type="button"
+            onClick={() => onCatalogMode("full")}
+            className={
+              catalogMode === "full"
+                ? styles.hudSegmentBtnActive
+                : styles.hudSegmentBtnInactive
+            }
+          >
+            {"All (119,627 stars)"}
           </button>
         </div>
 

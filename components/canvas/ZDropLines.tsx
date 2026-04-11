@@ -57,7 +57,7 @@ export function ZDropLines({ positions, count, visible, dynamicPositions }: Prop
 
   return (
     <lineSegments ref={linesRef} geometry={geometry} frustumCulled={false}>
-      <lineBasicMaterial color="#3d3a44" transparent opacity={0.35} depthWrite={false} />
+      <lineBasicMaterial color="#3d3a44" transparent opacity={0.25} depthWrite={false} />
     </lineSegments>
   );
 }

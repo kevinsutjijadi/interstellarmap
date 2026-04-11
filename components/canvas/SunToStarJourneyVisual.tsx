@@ -397,10 +397,12 @@ export function SunToStarJourneyVisual({
 
     const kin = gammaBetaAtDistanceAlongRoute(dLy, kinParams);
     if (!kin) return;
+    const tauShipYr = shipProperTimeYears(dLy, kinParams) ?? 0;
     onJourneyLineHover({
       dLy,
       beta: kin.beta,
       gamma: kin.gamma,
+      tauShipYr,
       wx,
       wy,
       wz,

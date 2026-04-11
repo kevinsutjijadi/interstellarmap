@@ -11,8 +11,10 @@ import {
 import {
   distanceFromSunLy,
   findStarIndexByBf,
+  findStarIndexByProper,
   starDisplayName,
   useStarData,
+  type StarCatalogMode,
 } from "./useStarData";
 import { MapHud } from "@/components/ui/MapHud";
 import {
@@ -42,8 +44,20 @@ function formatDistanceLy(ly: number): string {
   return `${ly.toLocaleString(undefined, { maximumFractionDigits: 1 })} ly`;
 }
 
+/** Ship proper time from Sun to hover point, shown in months. */
+function formatShipProperTimeMonths(tauShipYr: number): string {
+  if (!Number.isFinite(tauShipYr) || tauShipYr < 0) return "—";
+  const mo = tauShipYr * 12;
+  if (mo === 0) return "0 mo";
+  if (mo < 1e-6) return `${mo.toExponential(2)} mo`;
+  if (mo < 0.01) return `${mo.toFixed(4)} mo`;
+  if (mo < 1e6) return `${mo.toFixed(2)} mo`;
+  return `${mo.toExponential(2)} mo`;
+}
+
 export function InterstellarView() {
-  const { data, loading, error } = useStarData();
+  const [catalogMode, setCatalogMode] = useState<StarCatalogMode>("filtered");
+  const { data, loading, error } = useStarData(catalogMode);
   const [gridMode, setGridMode] = useState<GridMode>("cartesian");
   const [showGrid, setShowGrid] = useState(true);
   const [showZLines, setShowZLines] = useState(true);
@@ -59,6 +73,12 @@ export function InterstellarView() {
   const journeyHoverTooltipRef = useRef<HTMLDivElement>(null);
   const [journeyLineHover, setJourneyLineHover] = useState<JourneyLineHoverPayload | null>(null);
   const appliedDefaultSelectionRef = useRef(false);
+  /** Set when changing catalog so the next loaded `data` restores or skips selection. */
+  const postCatalogLoadRef = useRef<
+    | undefined
+    | { kind: "preserve"; bf: string; proper: string }
+    | { kind: "stay-empty" }
+  >(undefined);
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const [starAsideCollapsed, setStarAsideCollapsed] = useState(false);
   const [mapHudCollapsed, setMapHudCollapsed] = useState(true);
@@ -76,8 +96,55 @@ export function InterstellarView() {
     setStarAsideCollapsed(false);
   }, [selectedStar?.index]);
 
+  const handleCatalogModeChange = useCallback(
+    (mode: StarCatalogMode) => {
+      if (mode === catalogMode) return;
+      setHoverStarIndex(null);
+      if (selectedStar !== null && data !== null) {
+        const i = selectedStar.index;
+        postCatalogLoadRef.current = {
+          kind: "preserve",
+          bf: data.bf[i] ?? "",
+          proper: data.proper[i] ?? "",
+        };
+      } else {
+        postCatalogLoadRef.current = { kind: "stay-empty" };
+      }
+      setCatalogMode(mode);
+    },
+    [catalogMode, data, selectedStar],
+  );
+
   useEffect(() => {
-    if (!data || data.count === 0 || appliedDefaultSelectionRef.current) return;
+    if (!data || data.count === 0) return;
+
+    const pending = postCatalogLoadRef.current;
+    if (pending?.kind === "preserve") {
+      postCatalogLoadRef.current = undefined;
+      const bf = pending.bf.trim();
+      const proper = pending.proper.trim();
+      let idx: number | null = null;
+      if (bf) idx = findStarIndexByBf(data, bf);
+      if (idx === null && proper) idx = findStarIndexByProper(data, proper);
+      if (idx !== null) {
+        setSelectedStar({
+          index: idx,
+          name: starDisplayName(data.proper[idx] ?? "", data.bf[idx] ?? ""),
+          distanceLy: distanceFromSunLy(data, idx),
+        });
+      } else {
+        setSelectedStar(null);
+        setJourneyLineHover(null);
+      }
+      return;
+    }
+
+    if (pending?.kind === "stay-empty") {
+      postCatalogLoadRef.current = undefined;
+      return;
+    }
+
+    if (appliedDefaultSelectionRef.current) return;
     const idx = findStarIndexByBf(data, DEFAULT_SELECTED_BF);
     if (idx === null) return;
     appliedDefaultSelectionRef.current = true;
@@ -335,6 +402,9 @@ export function InterstellarView() {
                     <div className={styles.journeyTooltipMuted}>
                       Dist {journeyLineHover.dLy.toFixed(4)} ly
                     </div>
+                    <div className={styles.journeyTooltipMuted}>
+                      Ship proper {formatShipProperTimeMonths(journeyLineHover.tauShipYr)}
+                    </div>
                     <div className={styles.journeyTooltipGamma}>
                       γ {journeyLineHover.gamma.toFixed(3)}× vs Earth
                     </div>
@@ -420,6 +490,8 @@ export function InterstellarView() {
           <MapHud
             gridMode={gridMode}
             onGridMode={setGridMode}
+            catalogMode={catalogMode}
+            onCatalogMode={handleCatalogModeChange}
             showGrid={showGrid}
             onShowGrid={setShowGrid}
             showZLines={showZLines}
