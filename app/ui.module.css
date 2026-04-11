@@ -150,7 +150,7 @@
     left: 50%;
     transform: translateX(-50%);
     width: 90vw;
-    max-height: 30vh;
+    max-height: 50vh;
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
     border-radius: 0.5rem 0.5rem 0 0;
     transition: transform 0.22s ease-out;
